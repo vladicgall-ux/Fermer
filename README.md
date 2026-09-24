@@ -1,0 +1,128 @@
+# Fermer — учёт заготовки сена (Telegram Mini App)
+
+Telegram Mini App для учёта рулонов сена с геопривязкой: отметки на карте, роли «рабочий» / «админ»,
+статистика по периодам, экспорт в CSV, журнал изменений.
+
+**Стек:** Next.js 16 (App Router) + TypeScript · Telegram Web App SDK · Leaflet (OpenStreetMap / Esri, без ключей) ·
+PostgreSQL (Vercel Postgres/Neon или Supabase) через `postgres` · `zod`.
+
+## Возможности
+
+| | Рабочий | Админ |
+|---|---|---|
+| Карта, своя геопозиция | ✅ | ✅ |
+| Видит отметки | только свои | все (цвет маркера = рабочий, фильтр по рабочему) |
+| Создать отметку | только за себя | за любого рабочего (выбор из списка) |
+| Редактировать / удалить отметку | ❌ | ✅ (с подтверждением, всё пишется в журнал) |
+| Статистика | своя сумма за период | таблица «рабочий — сумма» + фильтр по рабочему |
+| Пользователи, роли, журнал действий | ❌ | ✅ |
+
+- **Отметка:** координаты, дата (ставится сервером автоматически), кол-во рулонов, рабочий, кто создал,
+  кто и когда изменил. Маркеры постоянные и не истекают.
+- **Создание:** «Добавить отметку» → метка ставится в текущую геопозицию, её можно перетащить или нажать на
+  карту в нужном месте → рулоны (и рабочий у админа) → «Сохранить». Дату клиент передать не может — сервер
+  отклоняет такой запрос.
+- **Карточка отметки** (тап по маркеру): адрес (Nominatim) и координаты, дата и время, рабочий, рулоны,
+  кто создал/изменил. У админа — «Редактировать», «Удалить», «История изменений».
+- **Редактирование (админ):** рулоны, рабочий, место (перетаскиванием), при необходимости — дата заготовки.
+- **Статистика:** день / месяц / год с выбором даты и стрелками, произвольный период; детализация по дням
+  (для периодов длиннее месяца — по месяцам с раскрытием дней); экспорт CSV (`;`, UTF-8 с BOM — открывается в Excel).
+  Границы дней считаются в часовом поясе устройства пользователя.
+- **Пользователи (админ):** список, поиск, переключатель «Админ», журнал действий (изменения, удаления, смена ролей).
+- Тема синхронизируется с Telegram (`--tg-theme-*`), системная кнопка «Назад» закрывает карточки,
+  вертикальные свайпы отключены, чтобы карта не сворачивала приложение.
+
+## Безопасность
+
+- **Аутентификация** — каждый запрос к API несёт `Authorization: tma <initData>`. Сервер проверяет подпись
+  (HMAC-SHA256, ключ `HMAC("WebAppData", bot_token)`, сравнение через `crypto.timingSafeEqual`),
+  срок `auth_date` (по умолчанию 24 ч), дубликаты ключей. См. `src/lib/telegram-auth.ts`.
+- **Fail-closed:** нет `TELEGRAM_BOT_TOKEN` → 503; невалидный initData → 401; роль всегда читается из БД;
+  операции админа проверяются на сервере (`handle({ admin: true })`). Захардкоженных секретов и ролей нет,
+  новый пользователь — `worker`.
+- **Проверки прав:** рабочий создаёт отметки только с `worker_id = свой` (иначе 403) и не может
+  редактировать/удалять/менять роли. Нельзя снять последнего админа; смены ролей сериализуются advisory-lock'ом.
+- **Аудит:** таблица `audit_log` — кто, когда, снимок «до/после» для создания, изменения, удаления и смены роли.
+- **Rate limiting** на всех эндпоинтах: счётчики в Postgres (общие для всех serverless-инстансов) —
+  300 запросов/мин с IP, 120/мин на пользователя, 30 изменяющих/мин на пользователя (`src/lib/rate-limit.ts`).
+- **CORS** (`src/proxy.ts`): запросы к `/api` с чужим `Origin` отклоняются (403); разрешён только origin
+  приложения и явно перечисленные в `APP_URL`.
+- **Заголовки** (`next.config.ts`): HSTS, `X-Content-Type-Options: nosniff`, `Referrer-Policy`,
+  `Permissions-Policy`, CSP, `X-Frame-Options`. Для API — `X-Frame-Options: DENY`. Для страницы —
+  `X-Frame-Options: SAMEORIGIN` + CSP `frame-ancestors` c `web.telegram.org`: Telegram Web показывает
+  Mini App во фрейме, а браузеры при наличии `frame-ancestors` используют его вместо `X-Frame-Options`.
+- **Экспорт CSV** идёт по одноразовой подписанной ссылке (HMAC, 5 минут) — чтобы работали
+  `Telegram.WebApp.downloadFile` и открытие в браузере без передачи initData в URL. Роль перепроверяется
+  по БД при скачивании; ячейки экранируются от CSV/formula injection.
+- В Supabase на таблицах включён RLS без политик — REST API (anon key) к ним доступа не имеет;
+  приложение ходит в БД напрямую.
+
+## Развёртывание на Vercel
+
+1. **Бот.** Создайте бота у [@BotFather](https://t.me/BotFather) и сохраните токен.
+2. **База данных.** Любой вариант:
+   - Vercel → Storage → Postgres (Neon) — переменная `POSTGRES_URL`/`DATABASE_URL` добавится сама;
+   - Supabase → Project Settings → Database → Connection string → **Transaction pooler** (порт 6543) → `DATABASE_URL`.
+3. **Схема:** `DATABASE_URL=... npm run db:migrate` (скрипт идемпотентен, повторный запуск безопасен).
+4. **Проект на Vercel:** импортируйте репозиторий, задайте переменные окружения (см. `.env.example`):
+   `TELEGRAM_BOT_TOKEN`, `DATABASE_URL` (если не добавлена интеграцией), `ADMIN_TELEGRAM_IDS`
+   (ваш Telegram id — первый админ). Deploy.
+5. **Mini App.** В @BotFather: `/mybots` → бот → *Bot Settings* → *Configure Mini App* (или *Menu Button*) →
+   URL вида `https://<project>.vercel.app`.
+6. Откройте бота в Telegram и запустите приложение. Рабочие появляются в списке пользователей после
+   первого входа — после этого админ может ставить отметки за них.
+
+Назначить админа без `ADMIN_TELEGRAM_IDS`:
+
+```sql
+update users set role = 'admin' where telegram_id = 123456789;
+```
+
+## Локальная разработка
+
+```bash
+npm install
+cp .env.example .env.local          # заполните TELEGRAM_BOT_TOKEN и DATABASE_URL
+npm run db:migrate
+npm run dev:initdata -- 123456789 "Иван"   # выведет NEXT_PUBLIC_DEV_INIT_DATA=... → в .env.local
+npm run dev
+```
+
+`NEXT_PUBLIC_DEV_INIT_DATA` — это настоящий initData, подписанный вашим токеном; сервер проверяет его так же,
+как в Telegram (никакого обхода авторизации нет). Используется только в `next dev` вне Telegram.
+
+Проверки: `npm run typecheck`, `npm run lint`, `npm test` (проверка initData, токена экспорта, CSV).
+
+## Структура
+
+```
+db/schema.sql                 схема БД (users, marks, audit_log, rate_limits)
+src/proxy.ts                  CORS для /api
+src/lib/telegram-auth.ts      проверка initData
+src/lib/api.ts                обёртка API: auth → rate limit → пользователь → роль
+src/app/api/…                 me, marks, marks/[id], marks/[id]/audit, users, users/[id], audit, stats, export
+src/components/…              App (навигация), MapTab/MapView (Leaflet), MarkCard, MarkForm, StatsTab, UsersTab
+```
+
+## API
+
+| Метод | Путь | Доступ | Описание |
+|---|---|---|---|
+| GET | `/api/me` | все | текущий пользователь |
+| GET | `/api/marks` | все | отметки (рабочий — свои) |
+| POST | `/api/marks` | все | `{lat, lng, bales_count, worker_id?}`; дата — автоматически |
+| PATCH | `/api/marks/:id` | админ | `{bales_count?, worker_id?, lat?+lng?, date?}` |
+| DELETE | `/api/marks/:id` | админ | удаление |
+| GET | `/api/marks/:id/audit` | админ | история отметки |
+| GET | `/api/users` | админ | пользователи с суммами |
+| PATCH | `/api/users/:id` | админ | `{role: 'worker' \| 'admin'}` |
+| GET | `/api/audit` | админ | журнал действий |
+| GET | `/api/stats?from&to&tz&worker_id?` | все | суммы по рабочим и дням |
+| POST | `/api/export/link?from&to&tz&worker_id?` | все | ссылка на CSV (5 мин) |
+| GET | `/api/export?t=` | по ссылке | CSV |
+
+## Ограничения
+
+- Тайлы OpenStreetMap и геокодер Nominatim бесплатны, но имеют политику честного использования; при большой
+  нагрузке замените URL тайлов в `src/components/MapView.tsx` (и `img-src` в CSP) на свой провайдер.
+- Отметку можно поставить только за пользователя, который хотя бы раз открыл приложение.
