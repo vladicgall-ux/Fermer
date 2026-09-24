@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/client-api'
-import { PALETTES, setPaletteId, usePalette } from '@/lib/palettes'
 import { alertDialog, confirmDialog, haptic, inTelegram } from '@/lib/telegram'
 import type { User } from '@/lib/types'
 
@@ -14,7 +13,6 @@ interface Props {
 
 export default function ProfileTab({ me, onChanged, onLogout }: Props) {
   const fromTelegram = inTelegram()
-  const palette = usePalette()
   const [name, setName] = useState(me.name)
   const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -148,33 +146,6 @@ export default function ProfileTab({ me, onChanged, onLogout }: Props) {
           </>
         )}
       </dl>
-
-      <h2>Цвета меток на карте</h2>
-      <p className="hint">У каждого рабочего своя метка. Выберите палитру — она сохранится на этом устройстве.</p>
-      <div className="palette-list">
-        {PALETTES.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            className={`palette-option${palette.id === p.id ? ' active' : ''}`}
-            onClick={() => {
-              setPaletteId(p.id)
-              haptic('light')
-            }}
-          >
-            <b>
-              {palette.id === p.id ? '✓ ' : ''}
-              {p.name}
-            </b>
-            <span className="hint"> — {p.hint}</span>
-            <span className="palette-swatches">
-              {p.colors.map((c) => (
-                <span key={c} style={{ background: c }} />
-              ))}
-            </span>
-          </button>
-        ))}
-      </div>
 
       <h2>Вход через браузер</h2>
       {loaded && (

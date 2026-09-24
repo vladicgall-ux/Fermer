@@ -2,7 +2,7 @@
 
 import L from 'leaflet'
 import { useEffect, useRef } from 'react'
-import { textOn } from '@/lib/palettes'
+import { borderFor, textOn } from '@/lib/palettes'
 import type { Mark } from '@/lib/types'
 
 export interface FlyTo {
@@ -38,7 +38,7 @@ const DEFAULT_CENTER: [number, number] = [55.75, 37.62]
 function markIcon(m: Mark, selected: boolean, color: string) {
   return L.divIcon({
     className: '',
-    html: `<div class="pin${selected ? ' selected' : ''}" style="--pin:${color};--pin-text:${textOn(color)}"><span>${m.bales_count}</span></div>`,
+    html: `<div class="pin${selected ? ' selected' : ''}" style="--pin:${color};--pin-text:${textOn(color)};--pin-border:${borderFor(color)}"><span>${m.bales_count}</span></div>`,
     iconSize: [36, 44],
     iconAnchor: [18, 44],
   })

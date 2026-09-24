@@ -553,7 +553,7 @@ select:focus {
   transform: rotate(-45deg);
   transform-origin: center;
   background: var(--pin);
-  border: 2px solid #fff;
+  border: 2px solid var(--pin-border, #fff);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 
@@ -1029,40 +1029,6 @@ button,
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
 }
 
-/* Выбор палитры в профиле. */
-.palette-list {
-  display: grid;
-  gap: 8px;
-}
-
-.palette-option {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 2px solid transparent;
-  background: var(--secondary-bg);
-}
-
-.palette-option.active {
-  border-color: var(--button);
-}
-
-.palette-swatches {
-  display: flex;
-  gap: 4px;
-  margin-top: 6px;
-  flex-wrap: wrap;
-}
-
-.palette-swatches span {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 2px solid #fff;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
-}
 
 .cred-form {
   width: 100%;

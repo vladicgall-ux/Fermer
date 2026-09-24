@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '@/lib/client-api'
 import { bales, fmtNum, plural } from '@/lib/format'
 import { useBackButton, useGeolocation } from '@/lib/hooks'
-import { makeColorFor, usePalette } from '@/lib/palettes'
+import { makeColorFor } from '@/lib/palettes'
 import { alertDialog, confirmDialog, haptic } from '@/lib/telegram'
 import type { Mark, User } from '@/lib/types'
 import MarkCard from './MarkCard'
@@ -98,7 +98,6 @@ export default function MapTab({ me, workers, active, onWorkersChanged }: Props)
   const [customValue, setCustomValue] = useState(() => String(new Date().getFullYear()))
   const [pickerOpen, setPickerOpen] = useState(false)
   const [legendOpen, setLegendOpen] = useState(false)
-  const palette = usePalette()
   const [workerFilter, setWorkerFilter] = useState<number | 0>(0)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [mode, setMode] = useState<Mode>({ kind: 'view' })
@@ -170,8 +169,8 @@ export default function MapTab({ me, workers, active, onWorkersChanged }: Props)
   // Цвет у каждого рабочего свой; порядок — по id всех известных рабочих.
   const colorFor = useMemo(() => {
     const ids = new Set<number>([me.id, ...workers.map((w) => w.id), ...marks.map((m) => m.worker_id)])
-    return makeColorFor(palette, [...ids])
-  }, [palette, workers, marks, me.id])
+    return makeColorFor([...ids])
+  }, [workers, marks, me.id])
 
   // Легенда: рабочие, у которых есть отметки.
   const legend = useMemo(() => {
@@ -406,7 +405,7 @@ export default function MapTab({ me, workers, active, onWorkersChanged }: Props)
                   <span className="hint">{w.count}</span>
                 </div>
               ))}
-              <p className="hint">Нажмите на рабочего, чтобы показать только его метки. Палитра — в «Профиле».</p>
+              <p className="hint">Цвета назначаются автоматически. Нажмите на рабочего, чтобы показать только его метки.</p>
             </div>
           )}
           {loadError && <div className="error-pill">{loadError}</div>}
