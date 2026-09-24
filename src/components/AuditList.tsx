@@ -8,6 +8,7 @@ const ACTION: Record<AuditEntry['action'], string> = {
   update: 'Изменение',
   delete: 'Удаление',
   role: 'Смена роли',
+  rename: 'Смена имени',
 }
 
 const ROLE: Record<string, string> = { admin: 'админ', worker: 'рабочий' }
@@ -17,6 +18,7 @@ type Snap = Record<string, unknown>
 function describe(e: AuditEntry): string[] {
   const b = (e.before ?? {}) as Snap
   const a = (e.after ?? {}) as Snap
+  if (e.action === 'rename') return [`${b.name ?? ''} → ${a.name ?? ''}`]
   if (e.entity === 'user') {
     return [`${b.name ?? ''}: ${ROLE[String(b.role)] ?? b.role} → ${ROLE[String(a.role)] ?? a.role}`]
   }

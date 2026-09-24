@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { cleanName } from './telegram-auth'
 
 const lat = z.number().min(-90).max(90)
 const lng = z.number().min(-180).max(180)
@@ -31,6 +32,24 @@ export const updateMarkSchema = z
   .strict()
   .refine((v) => Object.keys(v).length > 0, 'nothing to update')
   .refine((v) => (v.lat === undefined) === (v.lng === undefined), 'lat and lng must be set together')
+
+// null — вернуть имя из Telegram.
+export const nameSchema = z
+  .object({
+    name: z
+      .string()
+      .max(200)
+      .transform((v) => cleanName(v))
+      .pipe(
+        z
+          .string()
+          .min(2, 'Имя слишком короткое')
+          .max(64, 'Имя слишком длинное')
+          .refine((v) => !/[\p{Cc}<>]/u.test(v), 'Недопустимые символы'),
+      )
+      .nullable(),
+  })
+  .strict()
 
 export const roleSchema = z.object({ role: z.enum(['worker', 'admin']) }).strict()
 

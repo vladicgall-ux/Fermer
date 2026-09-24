@@ -106,11 +106,11 @@ export function signInitData(fields: Record<string, string>, botToken: string): 
 // Невидимые символы, которыми часто «очищают» имя в Telegram (Hangul filler, пустой Брайль, zero-width).
 const INVISIBLE_RE = /[\p{Cf}ᅟᅠㅤﾠ⠀]/gu
 
-function clean(s: string | undefined): string {
+export function cleanName(s: string | undefined): string {
   return (s ?? '').replace(INVISIBLE_RE, '').replace(/\s+/g, ' ').trim()
 }
 
 export function displayName(u: TelegramUser): string {
-  const name = [clean(u.first_name), clean(u.last_name)].filter(Boolean).join(' ')
+  const name = [cleanName(u.first_name), cleanName(u.last_name)].filter(Boolean).join(' ')
   return (name || (u.username ? `@${u.username}` : '') || `Пользователь ${u.id}`).slice(0, 128)
 }

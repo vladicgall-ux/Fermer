@@ -5,10 +5,11 @@ import { api } from '@/lib/client-api'
 import { supports, tg } from '@/lib/telegram'
 import type { User } from '@/lib/types'
 import MapTab from './MapTab'
+import ProfileTab from './ProfileTab'
 import StatsTab from './StatsTab'
 import UsersTab from './UsersTab'
 
-type Tab = 'map' | 'stats' | 'users'
+type Tab = 'map' | 'stats' | 'users' | 'profile'
 
 export default function App() {
   const [me, setMe] = useState<User | null>(null)
@@ -46,12 +47,15 @@ export default function App() {
   // Если админ снял права с себя, вкладка «Пользователи» становится недоступной.
   const current: Tab = tab === 'users' && !isAdmin ? 'map' : tab
 
+  // Админу — полный список пользователей, рабочему — только id и имена (для фильтра статистики).
+  const loggedIn = me !== null
   const loadWorkers = useCallback(() => {
-    if (!isAdmin) return
-    api<{ users: User[] }>('/api/users')
-      .then((r) => setWorkers(r.users))
-      .catch(() => {})
-  }, [isAdmin])
+    if (!loggedIn) return
+    const req = isAdmin
+      ? api<{ users: User[] }>('/api/users').then((r) => r.users)
+      : api<{ workers: Pick<User, 'id' | 'name'>[] }>('/api/workers').then((r) => r.workers as User[])
+    req.then(setWorkers).catch(() => {})
+  }, [isAdmin, loggedIn])
 
   useEffect(() => {
     loadWorkers()
@@ -87,7 +91,18 @@ export default function App() {
         </div>
         {current === 'stats' && (
           <div className="tab scroll">
-            <StatsTab key={me.role} me={me} workers={isAdmin ? workers : []} />
+            <StatsTab key={me.role} me={me} workers={workers} />
+          </div>
+        )}
+        {current === 'profile' && (
+          <div className="tab scroll">
+            <ProfileTab
+              me={me}
+              onChanged={(u) => {
+                setMe(u)
+                loadWorkers()
+              }}
+            />
           </div>
         )}
         {current === 'users' && isAdmin && (
@@ -108,6 +123,7 @@ export default function App() {
         {isAdmin && (
           <NavButton active={current === 'users'} onClick={() => setTab('users')} icon="👥" label="Пользователи" />
         )}
+        <NavButton active={current === 'profile'} onClick={() => setTab('profile')} icon="👤" label="Профиль" />
       </nav>
     </div>
   )

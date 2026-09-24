@@ -18,6 +18,8 @@ export class ApiError extends Error {
 export interface Ctx {
   user: User
   isAdmin: boolean
+  /** Данные из проверенного initData. */
+  tg: TelegramUser
 }
 
 interface HandleOpts {
@@ -78,10 +80,12 @@ async function upsertUser(tg: TelegramUser): Promise<User> {
   if (!row) throw new ApiError(500, 'user upsert failed')
 
   const needsRole = bootstrap && row.role !== 'admin'
-  if (row.name !== name || row.username !== username || needsRole) {
+  // Имя, заданное пользователем вручную, не перезаписываем именем из Telegram.
+  const nextName = row.name_custom ? row.name : name
+  if (row.name !== nextName || row.username !== username || needsRole) {
     const [updated] = await db<User[]>`
       update users
-      set name = ${name}, username = ${username}, role = ${needsRole ? 'admin' : row.role}
+      set name = ${nextName}, username = ${username}, role = ${needsRole ? 'admin' : row.role}
       where id = ${row.id}
       returning *
     `
@@ -126,7 +130,7 @@ export function handle<P = Record<string, never>>(
       const isAdmin = user.role === 'admin'
       if (opts.admin && !isAdmin) return json({ error: 'forbidden' }, 403)
 
-      const out = await fn(req, { user, isAdmin }, await route.params)
+      const out = await fn(req, { user, isAdmin, tg: result.user }, await route.params)
       return out instanceof Response ? out : json(out)
     } catch (e) {
       if (e instanceof ApiError) return json({ error: e.message }, e.status)

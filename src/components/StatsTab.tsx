@@ -39,7 +39,6 @@ function shift(mode: Mode, anchor: Date, dir: -1 | 1): Date {
 }
 
 export default function StatsTab({ me, workers }: { me: User; workers: User[] }) {
-  const isAdmin = me.role === 'admin'
   const today = toYmd(new Date())
   const [mode, setMode] = useState<Mode>('month')
   const [anchor, setAnchor] = useState(() => new Date())
@@ -52,9 +51,9 @@ export default function StatsTab({ me, workers }: { me: User; workers: User[] })
   const range = computeRange(mode, anchor, custom)
   const query = useMemo(() => {
     const q = new URLSearchParams({ from: range.from, to: range.to, tz: localTimeZone() })
-    if (isAdmin && workerId) q.set('worker_id', String(workerId))
+    if (workerId) q.set('worker_id', String(workerId))
     return q.toString()
-  }, [range.from, range.to, isAdmin, workerId])
+  }, [range.from, range.to, workerId])
 
   useEffect(() => {
     let cancelled = false
@@ -179,16 +178,17 @@ export default function StatsTab({ me, workers }: { me: User; workers: User[] })
         )}
       </div>
 
-      {isAdmin && (
-        <select className="full" value={workerId} onChange={(e) => setWorkerId(Number(e.target.value))}>
-          <option value={0}>Все рабочие</option>
-          {workers.map((w) => (
+      <select className="full" value={workerId} onChange={(e) => setWorkerId(Number(e.target.value))}>
+        <option value={0}>Все рабочие</option>
+        <option value={me.id}>Только я ({me.name})</option>
+        {workers
+          .filter((w) => w.id !== me.id)
+          .map((w) => (
             <option key={w.id} value={w.id}>
               {w.name}
             </option>
           ))}
-        </select>
-      )}
+      </select>
 
       {error && <div className="error-pill">{error}</div>}
 
@@ -196,7 +196,7 @@ export default function StatsTab({ me, workers }: { me: User; workers: User[] })
         <>
           <div className="total-card">
             <div className="hint">
-              {isAdmin ? (selectedWorker ? selectedWorker.name : 'Все рабочие') : 'Ваши рулоны'} ·{' '}
+              {workerId === me.id ? 'Ваши рулоны' : selectedWorker ? selectedWorker.name : 'Все рабочие'} ·{' '}
               {range.from === range.to ? fmtDay(range.from) : `${fmtDay(range.from)} — ${fmtDay(range.to)}`}
             </div>
             <div className="total-value">{fmtNum(data.total.bales)}</div>
@@ -206,7 +206,7 @@ export default function StatsTab({ me, workers }: { me: User; workers: User[] })
             </div>
           </div>
 
-          {isAdmin && !workerId && (
+          {!workerId && (
             <section>
               <h2>По рабочим</h2>
               {data.workers.length === 0 ? (
@@ -222,8 +222,15 @@ export default function StatsTab({ me, workers }: { me: User; workers: User[] })
                   </thead>
                   <tbody>
                     {data.workers.map((w) => (
-                      <tr key={w.worker_id} onClick={() => setWorkerId(w.worker_id)} className="clickable">
-                        <td>{w.name}</td>
+                      <tr
+                        key={w.worker_id}
+                        onClick={() => setWorkerId(w.worker_id)}
+                        className={`clickable${w.worker_id === me.id ? ' me' : ''}`}
+                      >
+                        <td>
+                          {w.name}
+                          {w.worker_id === me.id && <span className="hint"> (вы)</span>}
+                        </td>
                         <td className="num">{fmtNum(w.bales)}</td>
                         <td className="num">{fmtNum(w.marks)}</td>
                       </tr>

@@ -25,10 +25,9 @@ export async function GET(req: NextRequest) {
     const db = sql()
     const [user] = await db<User[]>`select * from users where id = ${p.u}`
     if (!user) return deny(401, 'unauthorized')
-    const isAdmin = user.role === 'admin'
 
     const range = rangeSchema.parse({ from: p.from, to: p.to, tz: p.tz, worker_id: p.w })
-    const marks = await getMarksInRange(db, range, { userId: user.id, isAdmin })
+    const marks = await getMarksInRange(db, range)
 
     const fmt = new Intl.DateTimeFormat('sv-SE', {
       timeZone: range.tz,

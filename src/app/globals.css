@@ -718,6 +718,10 @@ select:focus {
   cursor: pointer;
 }
 
+.table tr.me td {
+  font-weight: 600;
+}
+
 .day-list {
   list-style: none;
   padding: 0;

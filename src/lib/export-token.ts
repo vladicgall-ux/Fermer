@@ -3,14 +3,14 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
 /**
  * Короткоживущая подписанная ссылка на CSV. Нужна, потому что Telegram.WebApp.downloadFile
  * и обычная навигация не могут передать заголовок Authorization с initData.
- * Роль пользователя в токен не кладётся — она перечитывается из БД при скачивании.
+ * При скачивании проверяется, что пользователь из токена всё ещё существует.
  */
 export interface ExportPayload {
   u: number // users.id
   from: string
   to: string
   tz: string
-  w?: number // фильтр по рабочему (только для админа)
+  w?: number // фильтр по рабочему
   exp: number // unix seconds
 }
 

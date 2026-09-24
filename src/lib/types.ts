@@ -6,6 +6,7 @@ export interface User {
   name: string
   username: string | null
   role: Role
+  name_custom: boolean
   created_at: string
 }
 
@@ -29,7 +30,7 @@ export interface AuditEntry {
   id: number
   entity: 'mark' | 'user'
   entity_id: number
-  action: 'create' | 'update' | 'delete' | 'role'
+  action: 'create' | 'update' | 'delete' | 'role' | 'rename'
   actor_id: number
   actor_name: string
   before: Record<string, unknown> | null

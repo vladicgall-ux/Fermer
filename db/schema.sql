@@ -32,12 +32,19 @@ create table if not exists audit_log (
   id          bigserial primary key,
   entity      text        not null check (entity in ('mark', 'user')),
   entity_id   bigint      not null,
-  action      text        not null check (action in ('create', 'update', 'delete', 'role')),
+  action      text        not null,
   actor_id    bigint      not null references users(id) on delete restrict,
   before      jsonb,
   after       jsonb,
   created_at  timestamptz not null default now()
 );
+
+-- Миграции поверх первой версии схемы (идемпотентно).
+-- name_custom = true: пользователь задал имя сам, при входе оно не перезаписывается именем из Telegram.
+alter table users add column if not exists name_custom boolean not null default false;
+alter table audit_log drop constraint if exists audit_log_action_check;
+alter table audit_log add constraint audit_log_action_check
+  check (action in ('create', 'update', 'delete', 'role', 'rename'));
 
 create index if not exists audit_log_entity_idx on audit_log (entity, entity_id, created_at desc);
 create index if not exists audit_log_created_idx on audit_log (created_at desc);

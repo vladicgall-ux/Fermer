@@ -4,17 +4,12 @@ import type { Mark, StatsResponse } from './types'
 import type { Range } from './validation'
 import { markSelect } from './marks'
 
-interface Scope {
-  userId: number
-  isAdmin: boolean
-}
-
 /**
  * Условие по периоду [from; to] (включительно) в часовом поясе пользователя
- * плюс ограничение видимости: рабочий — только свои отметки.
+ * и необязательный фильтр по рабочему. Статистику по всем рабочим видят все пользователи.
  */
-function where(db: postgres.Sql, r: Range, s: Scope) {
-  const workerId = s.isAdmin ? r.worker_id : s.userId
+function where(db: postgres.Sql, r: Range) {
+  const workerId = r.worker_id
   return db`
     where m.date >= (${r.from}::date)::timestamp at time zone ${r.tz}
       and m.date <  ((${r.to}::date + 1)::timestamp) at time zone ${r.tz}
@@ -22,8 +17,8 @@ function where(db: postgres.Sql, r: Range, s: Scope) {
   `
 }
 
-export async function getStats(db: postgres.Sql, r: Range, s: Scope): Promise<StatsResponse> {
-  const cond = where(db, r, s)
+export async function getStats(db: postgres.Sql, r: Range): Promise<StatsResponse> {
+  const cond = where(db, r)
   const [workers, days] = await Promise.all([
     db<StatsResponse['workers']>`
       select u.id as worker_id, u.name,
@@ -49,6 +44,6 @@ export async function getStats(db: postgres.Sql, r: Range, s: Scope): Promise<St
   return { from: r.from, to: r.to, total, workers: [...workers], days: [...days] }
 }
 
-export async function getMarksInRange(db: postgres.Sql, r: Range, s: Scope): Promise<Mark[]> {
-  return db<Mark[]>`${markSelect(db)} ${where(db, r, s)} order by m.date limit 100000`
+export async function getMarksInRange(db: postgres.Sql, r: Range): Promise<Mark[]> {
+  return db<Mark[]>`${markSelect(db)} ${where(db, r)} order by m.date limit 100000`
 }
