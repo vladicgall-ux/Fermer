@@ -114,7 +114,6 @@ export default function MarkForm(props: Props) {
                 type="text"
                 value={customWorker}
                 maxLength={64}
-                autoFocus
                 placeholder="Имя рабочего, например «Коля с трактора»"
                 onChange={(e) => setCustomWorker(e.target.value)}
               />

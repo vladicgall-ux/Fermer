@@ -1044,7 +1044,7 @@ html[data-env='tg'] .app {
   height: var(--tg-viewport-stable-height, 100dvh);
 }
 
-/* Пока в карточке открыта клавиатура, нижнее меню прячется — больше места для формы. */
-.app:has(.sheet input:focus) .bottom-nav {
+/* Пока открыта форма добавления/редактирования отметки, нижнее меню скрыто — больше места для формы. */
+.app:has(form.sheet) .bottom-nav {
   display: none;
 }
