@@ -16,7 +16,8 @@ const MapView = dynamic(() => import('./MapView'), {
   loading: () => <div className="map map-loading">Загрузка карты…</div>,
 })
 
-type Period = 'all' | 'today' | 'week' | 'month'
+type Period = 'all' | 'today' | 'week' | 'month' | 'year' | 'custom'
+type CustomKind = 'day' | 'month' | 'year'
 type Mode = { kind: 'view' } | { kind: 'create' } | { kind: 'edit'; mark: Mark }
 
 const LAYER_KEY = 'fermer:baseLayer'
@@ -34,16 +35,49 @@ const PERIODS: { id: Period; label: string }[] = [
   { id: 'today', label: 'Сегодня' },
   { id: 'week', label: '7 дней' },
   { id: 'month', label: 'Месяц' },
+  { id: 'year', label: 'Год' },
 ]
 
-function periodStart(p: Period): number {
+/** Диапазон [from; to) в мс для фильтра отметок на карте; null — без ограничения. */
+function periodRange(p: Period, kind: CustomKind, value: string): [number, number] | null {
   const d = new Date()
   d.setHours(0, 0, 0, 0)
-  if (p === 'today') return d.getTime()
-  if (p === 'week') return d.getTime() - 6 * 86400000
-  if (p === 'month') return new Date(d.getFullYear(), d.getMonth(), 1).getTime()
-  return 0
+  const y = d.getFullYear()
+  switch (p) {
+    case 'today':
+      return [d.getTime(), d.getTime() + 86400000]
+    case 'week':
+      return [d.getTime() - 6 * 86400000, d.getTime() + 86400000]
+    case 'month':
+      return [new Date(y, d.getMonth(), 1).getTime(), new Date(y, d.getMonth() + 1, 1).getTime()]
+    case 'year':
+      return [new Date(y, 0, 1).getTime(), new Date(y + 1, 0, 1).getTime()]
+    case 'custom': {
+      if (kind === 'year') {
+        const yy = Number(value)
+        return [new Date(yy, 0, 1).getTime(), new Date(yy + 1, 0, 1).getTime()]
+      }
+      const [yy, mm, dd] = value.split('-').map(Number)
+      if (kind === 'month') return [new Date(yy, mm - 1, 1).getTime(), new Date(yy, mm, 1).getTime()]
+      return [new Date(yy, mm - 1, dd).getTime(), new Date(yy, mm - 1, dd + 1).getTime()]
+    }
+    default:
+      return null
+  }
 }
+
+function yearList(selected: number): number[] {
+  const now = new Date().getFullYear()
+  const from = Math.min(now - 10, selected)
+  const to = Math.max(now + 10, selected)
+  return Array.from({ length: to - from + 1 }, (_, i) => to - i)
+}
+
+const CUSTOM_KINDS: { id: CustomKind; label: string }[] = [
+  { id: 'day', label: 'День' },
+  { id: 'month', label: 'Месяц' },
+  { id: 'year', label: 'Год' },
+]
 
 interface Props {
   me: User
@@ -59,6 +93,9 @@ export default function MapTab({ me, workers, active, onWorkersChanged }: Props)
   const [marks, setMarks] = useState<Mark[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [period, setPeriod] = useState<Period>('all')
+  const [customKind, setCustomKind] = useState<CustomKind>('year')
+  const [customValue, setCustomValue] = useState(() => String(new Date().getFullYear()))
+  const [pickerOpen, setPickerOpen] = useState(false)
   const [workerFilter, setWorkerFilter] = useState<number | 0>(0)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [mode, setMode] = useState<Mode>({ kind: 'view' })
@@ -94,11 +131,31 @@ export default function MapTab({ me, workers, active, onWorkersChanged }: Props)
   }, [load])
 
   const visible = useMemo(() => {
-    const from = periodStart(period)
-    return marks.filter(
-      (m) => (from === 0 || Date.parse(m.date) >= from) && (!workerFilter || m.worker_id === workerFilter),
-    )
-  }, [marks, period, workerFilter])
+    const range = periodRange(period, customKind, customValue)
+    return marks.filter((m) => {
+      const t = Date.parse(m.date)
+      return (!range || (t >= range[0] && t < range[1])) && (!workerFilter || m.worker_id === workerFilter)
+    })
+  }, [marks, period, customKind, customValue, workerFilter])
+
+  // Подпись для кнопки выбора даты.
+  const customLabel =
+    period !== 'custom'
+      ? '📅 Дата'
+      : customKind === 'year'
+        ? `📅 ${customValue}`
+        : customKind === 'month'
+          ? `📅 ${customValue.slice(5, 7)}.${customValue.slice(0, 4)}`
+          : `📅 ${customValue.slice(8, 10)}.${customValue.slice(5, 7)}.${customValue.slice(0, 4)}`
+
+  const changeKind = (k: CustomKind) => {
+    const now = new Date()
+    const p = (n: number) => String(n).padStart(2, '0')
+    const ymd = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`
+    setCustomKind(k)
+    setCustomValue(k === 'year' ? String(now.getFullYear()) : k === 'month' ? ymd.slice(0, 7) : ymd)
+    setPeriod('custom')
+  }
 
   const editingId = mode.kind === 'edit' ? mode.mark.id : null
   // Редактируемую отметку скрываем — вместо неё на карте перетаскиваемая метка.
@@ -234,12 +291,65 @@ export default function MapTab({ me, workers, active, onWorkersChanged }: Props)
               <button
                 key={p.id}
                 className={`chip${period === p.id ? ' active' : ''}`}
-                onClick={() => setPeriod(p.id)}
+                onClick={() => {
+                  setPeriod(p.id)
+                  setPickerOpen(false)
+                }}
               >
                 {p.label}
               </button>
             ))}
+            <button
+              className={`chip${period === 'custom' ? ' active' : ''}`}
+              onClick={() => {
+                setPickerOpen((o) => !o)
+                setPeriod('custom')
+              }}
+            >
+              {customLabel}
+            </button>
           </div>
+          {pickerOpen && (
+            <div className="date-picker-pop">
+              <div className="segmented">
+                {CUSTOM_KINDS.map((k) => (
+                  <button key={k.id} className={customKind === k.id ? 'active' : ''} onClick={() => changeKind(k.id)}>
+                    {k.label}
+                  </button>
+                ))}
+              </div>
+              <div className="row gap">
+                {customKind === 'year' && (
+                  <select className="grow" value={customValue} onChange={(e) => setCustomValue(e.target.value)}>
+                    {yearList(Number(customValue)).map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {customKind === 'month' && (
+                  <input
+                    className="grow"
+                    type="month"
+                    value={customValue}
+                    onChange={(e) => e.target.value && setCustomValue(e.target.value)}
+                  />
+                )}
+                {customKind === 'day' && (
+                  <input
+                    className="grow"
+                    type="date"
+                    value={customValue}
+                    onChange={(e) => e.target.value && setCustomValue(e.target.value)}
+                  />
+                )}
+                <button className="btn primary small" onClick={() => setPickerOpen(false)}>
+                  Готово
+                </button>
+              </div>
+            </div>
+          )}
           {isAdmin && workers.length > 0 && (
             <select
               className="chip-select"

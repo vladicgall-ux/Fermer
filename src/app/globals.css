@@ -420,7 +420,7 @@ select:focus {
 
 .map-top {
   position: absolute;
-  z-index: 500;
+  z-index: 1050; /* выше контролов Leaflet, ниже карточки */
   top: calc(8px + var(--safe-top));
   left: 8px;
   right: 8px;
@@ -437,6 +437,10 @@ select:focus {
 .chips {
   display: flex;
   gap: 4px;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
   background: var(--bg);
   border-radius: 20px;
   padding: 3px;
@@ -963,4 +967,27 @@ button,
 
 .add-worker .btn {
   flex: none;
+}
+
+.chips::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* Всплывающий выбор дня / месяца / года на карте. */
+.date-picker-pop {
+  width: 100%;
+  max-width: 420px;
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--bg);
+  box-shadow: var(--shadow);
+}
+
+.date-picker-pop .segmented {
+  margin-bottom: 8px;
 }
