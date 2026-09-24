@@ -1043,9 +1043,3 @@ button,
 html[data-env='tg'] .app {
   height: var(--tg-viewport-stable-height, 100dvh);
 }
-
-/* iOS 26+ Safari: панель адреса «плавает» поверх нижней части страницы —
-   поднимаем нижнее меню над ней (фон меню уходит под панель). */
-html.ios-floating-bar .bottom-nav {
-  padding-bottom: max(84px, calc(env(safe-area-inset-bottom, 0px) + 50px));
-}

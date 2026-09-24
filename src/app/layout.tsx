@@ -6,10 +6,6 @@ import './globals.css'
 const ENV_SCRIPT = `(function(){try{
 var d=document.documentElement,w=window.Telegram&&window.Telegram.WebApp;
 var tg=!!(w&&w.initData);d.setAttribute('data-env',tg?'tg':'web');
-var ua=navigator.userAgent,ios=/iP(hone|od|ad)/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-var standalone=navigator.standalone===true||window.matchMedia('(display-mode: standalone)').matches;
-var v=/Version\\/(\\d+)/.exec(ua),safari=!/CriOS|FxiOS|EdgiOS|OPiOS|YaBrowser/.test(ua);
-if(!tg&&ios&&!standalone&&safari&&v&&+v[1]>=26)d.classList.add('ios-floating-bar');
 }catch(e){}})()`
 
 export const metadata: Metadata = {
@@ -49,8 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ru">
       <body>
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
-        {/* До отрисовки: где запущено приложение (Telegram / браузер) — от этого зависят высота экрана
-            и отступ под «плавающую» панель Safari на iOS 26+. */}
+        {/* До отрисовки: где запущено приложение (Telegram / браузер) — от этого зависит высота экрана. */}
         <script dangerouslySetInnerHTML={{ __html: ENV_SCRIPT }} />
         {children}
       </body>
