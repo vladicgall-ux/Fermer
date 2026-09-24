@@ -145,7 +145,6 @@ export default function MarkForm(props: Props) {
             placeholder="0"
             value={count}
             onChange={(e) => setCount(e.target.value.replace(/[^\d]/g, ''))}
-            autoFocus={!editing}
           />
           <button type="button" onClick={() => step(1)} aria-label="Больше">
             +
