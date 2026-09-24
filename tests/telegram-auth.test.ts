@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { signInitData, validateInitData } from '../src/lib/telegram-auth.ts'
+import { displayName, signInitData, validateInitData } from '../src/lib/telegram-auth.ts'
 import { csvCell, signExportToken, verifyExportToken } from '../src/lib/export-token.ts'
 
 const TOKEN = '123456:TEST-token'
@@ -64,4 +64,11 @@ test('csvCell escapes separators and neutralises formulas', () => {
   assert.equal(csvCell('say "hi"'), '"say ""hi"""')
   assert.equal(csvCell('=HYPERLINK("x")'), `"'=HYPERLINK(""x"")"`)
   assert.equal(csvCell(-5), '-5')
+})
+
+test('displayName strips invisible characters and falls back', () => {
+  assert.equal(displayName({ id: 5, first_name: 'Иван', last_name: 'Петров' }), 'Иван Петров')
+  assert.equal(displayName({ id: 5, first_name: 'ㅤ' }), 'Пользователь 5')
+  assert.equal(displayName({ id: 5, first_name: 'ㅤ', username: 'ivan' }), '@ivan')
+  assert.equal(displayName({ id: 5, first_name: ' ​Аня⠀ ' }), 'Аня')
 })

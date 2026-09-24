@@ -62,7 +62,10 @@ export default function App() {
       <div className="splash">
         <div className="splash-icon">🌾</div>
         <p>{error}</p>
-        <p className="hint">Откройте приложение через бота в Telegram.</p>
+        <button className="btn primary" style={{ flex: 'none' }} onClick={() => window.location.reload()}>
+          Повторить
+        </button>
+        <p className="hint">Если ошибка повторяется, откройте приложение заново через бота.</p>
       </div>
     )
   }
