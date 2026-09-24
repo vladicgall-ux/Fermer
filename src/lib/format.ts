@@ -49,3 +49,14 @@ export function localTimeZone(): string {
     return 'UTC'
   }
 }
+
+/** Учёт ведётся с 2026 года — более ранние годы и даты в выборе не показываются. */
+export const FIRST_YEAR = 2026
+export const FIRST_DAY = `${FIRST_YEAR}-01-01`
+export const FIRST_MONTH = `${FIRST_YEAR}-01`
+
+/** Годы для выбора: с 2026 по текущий + 10 (и выбранный, если он дальше). */
+export function yearChoices(selected: number): number[] {
+  const to = Math.max(new Date().getFullYear() + 10, selected)
+  return Array.from({ length: to - FIRST_YEAR + 1 }, (_, i) => FIRST_YEAR + i)
+}

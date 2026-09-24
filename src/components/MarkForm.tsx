@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { fmtCoords } from '@/lib/format'
+import { FIRST_DAY, fmtCoords } from '@/lib/format'
 import type { Mark, User } from '@/lib/types'
 
 export interface MarkFormValues {
@@ -157,6 +157,7 @@ export default function MarkForm(props: Props) {
           <input
             id="date"
             type="datetime-local"
+            min={`${FIRST_DAY}T00:00`}
             value={dateInput}
             max={toLocalInput(new Date().toISOString())}
             onChange={(e) => setDateInput(e.target.value)}

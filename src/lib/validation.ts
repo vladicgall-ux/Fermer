@@ -41,7 +41,7 @@ export const updateMarkSchema = z
       .datetime({ offset: true })
       .refine((s) => {
         const t = Date.parse(s)
-        return t >= Date.UTC(2000, 0, 1) && t <= Date.now() + 24 * 3600 * 1000
+        return t >= Date.UTC(2025, 11, 31) && t <= Date.now() + 24 * 3600 * 1000 // учёт с 2026 года
       }, 'date out of range')
       .optional(),
   })

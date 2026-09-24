@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '@/lib/client-api'
-import { bales, fmtDay, fmtMonth, fmtNum, localTimeZone, parseYmd, plural, toYmd } from '@/lib/format'
+import { bales, FIRST_DAY, FIRST_MONTH, FIRST_YEAR, fmtDay, fmtMonth, fmtNum, localTimeZone, parseYmd, plural, toYmd, yearChoices } from '@/lib/format'
 import { alertDialog, supports, tg } from '@/lib/telegram'
 import type { StatsResponse, User } from '@/lib/types'
 
@@ -28,14 +28,6 @@ function computeRange(mode: Mode, anchor: Date, custom: { from: string; to: stri
     case 'range':
       return custom.from <= custom.to ? custom : { from: custom.to, to: custom.from }
   }
-}
-
-/** Годы для выбора: 10 лет назад и 10 вперёд от текущего (плюс выбранный, если он дальше). */
-function yearOptions(selected: number): number[] {
-  const now = new Date().getFullYear()
-  const from = Math.min(now - 10, selected)
-  const to = Math.max(now + 10, selected)
-  return Array.from({ length: to - from + 1 }, (_, i) => to - i)
 }
 
 function shift(mode: Mode, anchor: Date, dir: -1 | 1): Date {
@@ -132,13 +124,19 @@ export default function StatsTab({ me, workers }: { me: User; workers: User[] })
 
       <div className="period-picker">
         {mode !== 'range' && (
-          <button className="icon-btn" onClick={() => setAnchor(shift(mode, anchor, -1))} aria-label="Назад">
+          <button
+            className="icon-btn"
+            onClick={() => setAnchor(shift(mode, anchor, -1))}
+            disabled={shift(mode, anchor, -1).getFullYear() < FIRST_YEAR}
+            aria-label="Назад"
+          >
             ‹
           </button>
         )}
         {mode === 'day' && (
           <input
             type="date"
+            min={FIRST_DAY}
             value={toYmd(anchor)}
             onChange={(e) => e.target.value && setAnchor(parseYmd(e.target.value))}
           />
@@ -146,6 +144,7 @@ export default function StatsTab({ me, workers }: { me: User; workers: User[] })
         {mode === 'month' && (
           <input
             type="month"
+            min={FIRST_MONTH}
             value={toYmd(anchor).slice(0, 7)}
             onChange={(e) => e.target.value && setAnchor(parseYmd(`${e.target.value}-01`))}
           />
@@ -155,7 +154,7 @@ export default function StatsTab({ me, workers }: { me: User; workers: User[] })
             value={anchor.getFullYear()}
             onChange={(e) => setAnchor(new Date(Number(e.target.value), 0, 1))}
           >
-            {yearOptions(anchor.getFullYear()).map((y) => (
+            {yearChoices(anchor.getFullYear()).map((y) => (
               <option key={y} value={y}>
                 {y}
               </option>
@@ -166,12 +165,14 @@ export default function StatsTab({ me, workers }: { me: User; workers: User[] })
           <>
             <input
               type="date"
+              min={FIRST_DAY}
               value={custom.from}
               onChange={(e) => e.target.value && setCustom((c) => ({ ...c, from: e.target.value }))}
             />
             <span>—</span>
             <input
               type="date"
+              min={FIRST_DAY}
               value={custom.to}
               onChange={(e) => e.target.value && setCustom((c) => ({ ...c, to: e.target.value }))}
             />

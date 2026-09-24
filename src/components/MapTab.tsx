@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '@/lib/client-api'
-import { bales, fmtNum, plural } from '@/lib/format'
+import { bales, FIRST_DAY, FIRST_MONTH, fmtNum, plural, yearChoices } from '@/lib/format'
 import { useBackButton, useGeolocation } from '@/lib/hooks'
 import { makeColorFor } from '@/lib/palettes'
 import { alertDialog, confirmDialog, haptic } from '@/lib/telegram'
@@ -65,13 +65,6 @@ function periodRange(p: Period, kind: CustomKind, value: string): [number, numbe
     default:
       return null
   }
-}
-
-function yearList(selected: number): number[] {
-  const now = new Date().getFullYear()
-  const from = Math.min(now - 10, selected)
-  const to = Math.max(now + 10, selected)
-  return Array.from({ length: to - from + 1 }, (_, i) => to - i)
 }
 
 const CUSTOM_KINDS: { id: CustomKind; label: string }[] = [
@@ -340,7 +333,7 @@ export default function MapTab({ me, workers, active, onWorkersChanged }: Props)
               <div className="row gap">
                 {customKind === 'year' && (
                   <select className="grow" value={customValue} onChange={(e) => setCustomValue(e.target.value)}>
-                    {yearList(Number(customValue)).map((y) => (
+                    {yearChoices(Number(customValue)).map((y) => (
                       <option key={y} value={y}>
                         {y}
                       </option>
@@ -351,6 +344,7 @@ export default function MapTab({ me, workers, active, onWorkersChanged }: Props)
                   <input
                     className="grow"
                     type="month"
+                    min={FIRST_MONTH}
                     value={customValue}
                     onChange={(e) => e.target.value && setCustomValue(e.target.value)}
                   />
@@ -359,6 +353,7 @@ export default function MapTab({ me, workers, active, onWorkersChanged }: Props)
                   <input
                     className="grow"
                     type="date"
+                    min={FIRST_DAY}
                     value={customValue}
                     onChange={(e) => e.target.value && setCustomValue(e.target.value)}
                   />
