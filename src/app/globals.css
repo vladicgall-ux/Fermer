@@ -506,6 +506,21 @@ select:focus {
   box-shadow: var(--shadow);
 }
 
+.fab-layer {
+  position: absolute;
+  z-index: 500;
+  right: 12px;
+  bottom: 142px;
+  border: 0;
+  border-radius: 20px;
+  padding: 8px 12px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+}
+
 .fab-locate:disabled {
   color: var(--hint);
 }

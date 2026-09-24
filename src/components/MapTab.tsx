@@ -9,7 +9,7 @@ import { alertDialog, confirmDialog, haptic } from '@/lib/telegram'
 import type { Mark, User } from '@/lib/types'
 import MarkCard from './MarkCard'
 import MarkForm, { type MarkFormValues } from './MarkForm'
-import type { FlyTo } from './MapView'
+import type { BaseLayer, FlyTo } from './MapView'
 
 const MapView = dynamic(() => import('./MapView'), {
   ssr: false,
@@ -18,6 +18,16 @@ const MapView = dynamic(() => import('./MapView'), {
 
 type Period = 'all' | 'today' | 'week' | 'month'
 type Mode = { kind: 'view' } | { kind: 'create' } | { kind: 'edit'; mark: Mark }
+
+const LAYER_KEY = 'fermer:baseLayer'
+
+function savedLayer(): BaseLayer {
+  try {
+    return localStorage.getItem(LAYER_KEY) === 'scheme' ? 'scheme' : 'satellite'
+  } catch {
+    return 'satellite'
+  }
+}
 
 const PERIODS: { id: Period; label: string }[] = [
   { id: 'all', label: 'Все' },
@@ -48,6 +58,17 @@ export default function MapTab({ me, workers, active }: { me: User; workers: Use
   const [flyTo, setFlyTo] = useState<FlyTo | null>(null)
   const [busy, setBusy] = useState(false)
   const centerRef = useRef<[number, number] | null>(null)
+  const [baseLayer, setBaseLayer] = useState<BaseLayer>(savedLayer)
+
+  const toggleLayer = () => {
+    const next: BaseLayer = baseLayer === 'satellite' ? 'scheme' : 'satellite'
+    setBaseLayer(next)
+    try {
+      localStorage.setItem(LAYER_KEY, next)
+    } catch {
+      // хранилище недоступно — выбор просто не запомнится
+    }
+  }
 
   const load = useCallback(async () => {
     try {
@@ -189,7 +210,12 @@ export default function MapTab({ me, workers, active }: { me: User; workers: Use
         active={active}
         colorByWorker={isAdmin}
         centerRef={centerRef}
+        baseLayer={baseLayer}
       />
+
+      <button className="fab-layer" onClick={toggleLayer} aria-label="Переключить вид карты">
+        {baseLayer === 'satellite' ? '🗺️ Схема' : '🛰️ Спутник'}
+      </button>
 
       {!picking && (
         <div className="map-top">

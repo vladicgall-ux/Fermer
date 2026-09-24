@@ -27,7 +27,10 @@ interface Props {
   colorByWorker: boolean
   /** Сюда пишется текущий центр карты (для новой отметки без геопозиции). */
   centerRef: React.RefObject<[number, number] | null>
+  baseLayer: BaseLayer
 }
+
+export type BaseLayer = 'satellite' | 'scheme'
 
 const DEFAULT_CENTER: [number, number] = [55.75, 37.62]
 
@@ -54,6 +57,7 @@ export default function MapView(props: Props) {
   const marksLayer = useRef<L.LayerGroup | null>(null)
   const meLayer = useRef<L.LayerGroup | null>(null)
   const pickMarker = useRef<L.Marker | null>(null)
+  const layers = useRef<Record<BaseLayer, L.Layer> | null>(null)
   const centered = useRef<'none' | 'marks' | 'me'>('none')
   const cb = useRef(props)
   useEffect(() => {
@@ -64,16 +68,26 @@ export default function MapView(props: Props) {
   useEffect(() => {
     if (!el.current || map.current) return
     const m = L.map(el.current, { zoomControl: false, attributionControl: true }).setView(DEFAULT_CENTER, 5)
-    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    const scheme = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap',
     })
-    const sat = L.tileLayer(
-      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      { maxZoom: 19, attribution: 'Tiles &copy; Esri' },
-    )
-    osm.addTo(m)
-    L.control.layers({ Схема: osm, Спутник: sat }, undefined, { position: 'topright' }).addTo(m)
+    // Спутник Esri World Imagery (без ключа) + подписи населённых пунктов и границ поверх снимка.
+    // maxNativeZoom 18: на больших зумах тайлы растягиваются вместо заглушки «нет данных».
+    const esri = 'https://server.arcgisonline.com/ArcGIS/rest/services'
+    const satellite = L.layerGroup([
+      L.tileLayer(`${esri}/World_Imagery/MapServer/tile/{z}/{y}/{x}`, {
+        maxZoom: 19,
+        maxNativeZoom: 18,
+        attribution: '&copy; Esri',
+      }),
+      L.tileLayer(`${esri}/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}`, {
+        maxZoom: 19,
+        maxNativeZoom: 18,
+      }),
+    ])
+    layers.current = { satellite, scheme }
+    layers.current[cb.current.baseLayer].addTo(m)
     L.control.zoom({ position: 'topright' }).addTo(m)
     m.attributionControl.setPrefix(false)
     marksLayer.current = L.layerGroup().addTo(m)
@@ -97,6 +111,21 @@ export default function MapView(props: Props) {
       map.current = null
     }
   }, [])
+
+  // Переключение подложки: спутник / схема.
+  const { baseLayer } = props
+  useEffect(() => {
+    const m = map.current
+    const l = layers.current
+    if (!m || !l) return
+    for (const [key, layer] of Object.entries(l) as [BaseLayer, L.Layer][]) {
+      if (key === baseLayer) {
+        if (!m.hasLayer(layer)) layer.addTo(m)
+      } else if (m.hasLayer(layer)) {
+        m.removeLayer(layer)
+      }
+    }
+  }, [baseLayer])
 
   // Маркеры отметок.
   const { marks, selectedId, colorByWorker } = props
