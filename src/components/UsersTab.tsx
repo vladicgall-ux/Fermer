@@ -7,7 +7,7 @@ import { alertDialog, confirmDialog, haptic } from '@/lib/telegram'
 import type { AuditEntry, Role, User } from '@/lib/types'
 import AuditList from './AuditList'
 
-type Row = User & { bales: number; marks: number; locked: boolean }
+type Row = User & { bales: number; marks: number; locked: boolean; login: string | null }
 
 export default function UsersTab({ me, onChanged }: { me: User; onChanged: (u: User) => void }) {
   const [view, setView] = useState<'users' | 'audit'>('users')
@@ -15,6 +15,7 @@ export default function UsersTab({ me, onChanged }: { me: User; onChanged: (u: U
   const [audit, setAudit] = useState<AuditEntry[] | null>(null)
   const [pending, setPending] = useState<number | null>(null)
   const [query, setQuery] = useState('')
+  const [credFor, setCredFor] = useState<number | null>(null)
   const [newWorker, setNewWorker] = useState('')
   const [adding, setAdding] = useState(false)
 
@@ -128,8 +129,17 @@ export default function UsersTab({ me, onChanged }: { me: User; onChanged: (u: U
                       {u.username ? `@${u.username} · ` : ''}
                       {u.kind === 'web' ? 'браузер · ' : u.kind === 'manual' ? 'вписан вручную · ' : ''}
                       {u.role === 'admin' ? 'Админ' : 'Рабочий'} · {bales(u.bales)}
+                      {u.login ? ` · логин: ${u.login}` : ''}
                     </div>
                   </div>
+                  <button
+                    className="icon-btn"
+                    aria-label="Логин и пароль"
+                    title="Выдать логин и пароль"
+                    onClick={() => setCredFor(credFor === u.id ? null : u.id)}
+                  >
+                    🔑
+                  </button>
                   {u.kind !== 'manual' && (
                   <label className={`switch${u.locked ? ' disabled' : ''}`} title={u.locked ? 'Задан в ADMIN_TELEGRAM_IDS' : ''}>
                     <input
@@ -142,17 +152,83 @@ export default function UsersTab({ me, onChanged }: { me: User; onChanged: (u: U
                     <span className="switch-label">Админ</span>
                   </label>
                   )}
+                  {credFor === u.id && (
+                    <CredentialsForm
+                      user={u}
+                      onDone={() => {
+                        setCredFor(null)
+                        loadUsers()
+                        onChanged(u)
+                      }}
+                    />
+                  )}
                 </li>
               ))}
             </ul>
           )}
           <p className="hint">
-            Новые пользователи появляются здесь после первого входа в приложение и получают роль «Рабочий».
+            Самостоятельной регистрации нет: чтобы человек мог войти через браузер, добавьте его и выдайте
+            логин и пароль кнопкой 🔑. Пользователи Telegram появляются здесь после первого входа через бота.
           </p>
         </>
       )}
 
       {view === 'audit' && (audit === null ? <p className="hint">Загрузка…</p> : <AuditList entries={audit} />)}
     </div>
+  )
+}
+
+function CredentialsForm({ user, onDone }: { user: Row; onDone: () => void }) {
+  const [login, setLogin] = useState(user.login ?? '')
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const valid = login.trim().length >= 3 && password.length >= 6
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!valid || busy) return
+    setBusy(true)
+    try {
+      await api(`/api/users/${user.id}/credentials`, {
+        method: 'PUT',
+        body: { login: login.trim(), password },
+      })
+      haptic('success')
+      await alertDialog(`Готово. ${user.name}: логин «${login.trim()}», пароль «${password}». Передайте их человеку.`)
+      onDone()
+    } catch (err) {
+      haptic('error')
+      await alertDialog((err as Error).message)
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form className="cred-form" onSubmit={submit}>
+      <input
+        type="text"
+        value={login}
+        maxLength={32}
+        placeholder="Логин"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        onChange={(e) => setLogin(e.target.value)}
+      />
+      <input
+        type="text"
+        value={password}
+        maxLength={128}
+        placeholder={user.login ? 'Новый пароль (от 6 символов)' : 'Пароль (от 6 символов)'}
+        autoComplete="off"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        onChange={(e) => setPassword(e.target.value)}
+      />
+      <button type="submit" className="btn primary" disabled={!valid || busy}>
+        {user.login ? 'Сменить' : 'Выдать вход'}
+      </button>
+    </form>
   )
 }

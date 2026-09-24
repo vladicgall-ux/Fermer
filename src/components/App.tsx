@@ -6,7 +6,7 @@ import { inTelegram, supports, tg } from '@/lib/telegram'
 import type { User } from '@/lib/types'
 import MapTab from './MapTab'
 import ProfileTab from './ProfileTab'
-import Register from './Register'
+import Login from './Login'
 import StatsTab from './StatsTab'
 import UsersTab from './UsersTab'
 
@@ -43,7 +43,7 @@ export default function App() {
     api<{ user: User }>('/api/me')
       .then((r) => setMe(r.user))
       .catch((e: Error) => {
-        // Вне Telegram без сессии — предлагаем войти по имени.
+        // Вне Telegram без сессии — экран входа по логину и паролю.
         if (e instanceof HttpError && e.status === 401 && !inTelegram()) setNeedsRegister(true)
         else setError(e.message)
       })
@@ -69,7 +69,7 @@ export default function App() {
 
   if (needsRegister && !me) {
     return (
-      <Register
+      <Login
         onDone={(u) => {
           setNeedsRegister(false)
           setMe(u)

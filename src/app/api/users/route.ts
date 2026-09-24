@@ -2,17 +2,17 @@ import { handle, isBootstrapAdmin, readJson } from '@/lib/api'
 import { sql } from '@/lib/db'
 import { manualWorkerId } from '@/lib/marks'
 import type { User } from '@/lib/types'
-import { registerSchema } from '@/lib/validation'
-
-const addWorkerSchema = registerSchema.pick({ name: true }).strict()
+import { addWorkerSchema } from '@/lib/validation'
 
 export const GET = handle({ admin: true }, async () => {
-  const users = await sql()<(User & { bales: number; marks: number })[]>`
-    select u.*,
+  const users = await sql()<(User & { bales: number; marks: number; login: string | null })[]>`
+    select u.*, c.login,
       coalesce(sum(m.bales_count), 0)::bigint as bales,
       count(m.id)::bigint as marks
-    from users u left join marks m on m.worker_id = u.id
-    group by u.id
+    from users u
+    left join marks m on m.worker_id = u.id
+    left join user_credentials c on c.user_id = u.id
+    group by u.id, c.login
     order by u.name
   `
   return {

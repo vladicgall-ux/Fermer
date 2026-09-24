@@ -115,7 +115,7 @@ h2 {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  height: var(--tg-viewport-stable-height, 100dvh);
+  height: 100dvh;
   min-height: 0;
 }
 
@@ -801,6 +801,7 @@ select:focus {
 }
 
 .user-list li {
+  flex-wrap: wrap;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1061,4 +1062,24 @@ button,
   border-radius: 50%;
   border: 2px solid #fff;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+}
+
+.cred-form {
+  width: 100%;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--secondary-bg);
+}
+
+/* В Telegram высоту экрана задаёт SDK (учитывает свёрнутый/развёрнутый Mini App). */
+html[data-env='tg'] .app {
+  height: var(--tg-viewport-stable-height, 100dvh);
+}
+
+/* iOS 26+ Safari: панель адреса «плавает» поверх нижней части страницы —
+   поднимаем нижнее меню над ней (фон меню уходит под панель). */
+html.ios-floating-bar .bottom-nav {
+  padding-bottom: max(84px, calc(env(safe-area-inset-bottom, 0px) + 50px));
 }

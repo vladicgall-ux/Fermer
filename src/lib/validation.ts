@@ -65,9 +65,10 @@ export const passwordField = z
   .min(6, 'Пароль: минимум 6 символов')
   .max(128, 'Пароль слишком длинный')
 
-export const registerSchema = z
-  .object({ name: personName, login: loginField, password: passwordField })
-  .strict()
+export const addWorkerSchema = z.object({ name: personName }).strict()
+
+// Админ выдаёт пользователю логин и пароль для входа через браузер.
+export const adminCredentialsSchema = z.object({ login: loginField, password: passwordField }).strict()
 
 export const loginSchema = z
   .object({ login: z.string().trim().min(1).max(32), password: z.string().min(1).max(128) })
