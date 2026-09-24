@@ -6,6 +6,8 @@ import type { Mark, User } from '@/lib/types'
 
 export interface MarkFormValues {
   worker_id: number
+  /** Админ: имя рабочего, которого нет в приложении (вместо worker_id). */
+  worker_name?: string
   bales_count: number
   /** ISO-дата, только при редактировании админом. */
   date?: string
@@ -34,11 +36,14 @@ function toLocalInput(iso: string): string {
 export default function MarkForm(props: Props) {
   const { me, workers, isAdmin, editing, pick, busy } = props
   const [workerId, setWorkerId] = useState<number>(editing?.worker_id ?? me.id)
+  const [customWorker, setCustomWorker] = useState('')
+  const OTHER = -1
   const [count, setCount] = useState<string>(editing ? String(editing.bales_count) : '')
   const [dateInput, setDateInput] = useState<string>(editing ? toLocalInput(editing.date) : '')
 
   const n = Number(count)
-  const valid = Number.isInteger(n) && n >= 1 && n <= 100000
+  const custom = workerId === OTHER
+  const valid = Number.isInteger(n) && n >= 1 && n <= 100000 && (!custom || customWorker.trim().length >= 2)
 
   const options = workers.some((w) => w.id === me.id) ? workers : [me, ...workers]
 
@@ -50,7 +55,12 @@ export default function MarkForm(props: Props) {
       const d = new Date(dateInput)
       if (!Number.isNaN(d.getTime())) date = d.toISOString()
     }
-    props.onSubmit({ worker_id: workerId, bales_count: n, date })
+    props.onSubmit({
+      worker_id: workerId,
+      worker_name: custom ? customWorker.trim() : undefined,
+      bales_count: n,
+      date,
+    })
   }
 
   const step = (delta: number) => setCount(String(Math.min(100000, Math.max(1, (Number(count) || 0) + delta))))
@@ -75,14 +85,28 @@ export default function MarkForm(props: Props) {
       <div className="field">
         <label htmlFor="worker">Рабочий</label>
         {isAdmin ? (
-          <select id="worker" value={workerId} onChange={(e) => setWorkerId(Number(e.target.value))}>
-            {options.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name}
-                {w.id === me.id ? ' (я)' : ''}
-              </option>
-            ))}
-          </select>
+          <>
+            <select id="worker" value={workerId} onChange={(e) => setWorkerId(Number(e.target.value))}>
+              {options.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                  {w.id === me.id ? ' (я)' : ''}
+                </option>
+              ))}
+              <option value={OTHER}>✎ Другой рабочий (вписать имя)…</option>
+            </select>
+            {custom && (
+              <input
+                className="custom-worker"
+                type="text"
+                value={customWorker}
+                maxLength={64}
+                autoFocus
+                placeholder="Имя рабочего, например «Коля с трактора»"
+                onChange={(e) => setCustomWorker(e.target.value)}
+              />
+            )}
+          </>
         ) : (
           <div className="readonly">{me.name}</div>
         )}

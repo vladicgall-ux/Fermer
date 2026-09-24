@@ -41,3 +41,19 @@ export async function assertUserExists(db: Tx, id: number): Promise<void> {
   const [row] = await db`select 1 from users where id = ${id}`
   if (!row) throw new ApiError(400, 'worker not found')
 }
+
+/**
+ * «Ручной» рабочий: админ вписал имя человека, которого нет в приложении.
+ * Одинаковые имена (без учёта регистра) переиспользуют одну запись.
+ */
+export async function manualWorkerId(db: Tx, name: string): Promise<number> {
+  await db`
+    insert into users (telegram_id, name, username, role, name_custom, kind)
+    values (null, ${name}, null, 'worker', true, 'manual')
+    on conflict (lower(name)) where kind = 'manual' do nothing
+  `
+  const [row] = await db<{ id: number }[]>`
+    select id from users where kind = 'manual' and lower(name) = lower(${name})
+  `
+  return row.id
+}

@@ -2,11 +2,13 @@ export type Role = 'worker' | 'admin'
 
 export interface User {
   id: number
-  telegram_id: number
+  /** null — пользователь зарегистрировался в браузере без Telegram. */
+  telegram_id: number | null
   name: string
   username: string | null
   role: Role
   name_custom: boolean
+  kind: 'telegram' | 'web' | 'manual'
   created_at: string
 }
 

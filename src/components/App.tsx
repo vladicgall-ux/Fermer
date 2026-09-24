@@ -1,11 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { api } from '@/lib/client-api'
-import { supports, tg } from '@/lib/telegram'
+import { api, HttpError } from '@/lib/client-api'
+import { inTelegram, supports, tg } from '@/lib/telegram'
 import type { User } from '@/lib/types'
 import MapTab from './MapTab'
 import ProfileTab from './ProfileTab'
+import Register from './Register'
 import StatsTab from './StatsTab'
 import UsersTab from './UsersTab'
 
@@ -14,6 +15,7 @@ type Tab = 'map' | 'stats' | 'users' | 'profile'
 export default function App() {
   const [me, setMe] = useState<User | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [needsRegister, setNeedsRegister] = useState(false)
   const [tab, setTab] = useState<Tab>('map')
   const [workers, setWorkers] = useState<User[]>([])
 
@@ -40,7 +42,11 @@ export default function App() {
   useEffect(() => {
     api<{ user: User }>('/api/me')
       .then((r) => setMe(r.user))
-      .catch((e: Error) => setError(e.message))
+      .catch((e: Error) => {
+        // Вне Telegram без сессии — предлагаем войти по имени.
+        if (e instanceof HttpError && e.status === 401 && !inTelegram()) setNeedsRegister(true)
+        else setError(e.message)
+      })
   }, [])
 
   const isAdmin = me?.role === 'admin'
@@ -61,6 +67,16 @@ export default function App() {
     loadWorkers()
   }, [loadWorkers])
 
+  if (needsRegister && !me) {
+    return (
+      <Register
+        onDone={(u) => {
+          setNeedsRegister(false)
+          setMe(u)
+        }}
+      />
+    )
+  }
   if (error) {
     return (
       <div className="splash">
@@ -69,7 +85,7 @@ export default function App() {
         <button className="btn primary" style={{ flex: 'none' }} onClick={() => window.location.reload()}>
           Повторить
         </button>
-        <p className="hint">Если ошибка повторяется, откройте приложение заново через бота.</p>
+        <p className="hint">Если ошибка повторяется, откройте приложение заново.</p>
       </div>
     )
   }
@@ -87,7 +103,13 @@ export default function App() {
       <main className="content">
         {/* Карта не размонтируется при переключении вкладок, чтобы не терять позицию и зум. */}
         <div className="tab" hidden={current !== 'map'}>
-          <MapTab key={me.role} me={me} workers={isAdmin ? workers : []} active={current === 'map'} />
+          <MapTab
+            key={me.role}
+            me={me}
+            workers={isAdmin ? workers : []}
+            active={current === 'map'}
+            onWorkersChanged={loadWorkers}
+          />
         </div>
         {current === 'stats' && (
           <div className="tab scroll">
@@ -101,6 +123,11 @@ export default function App() {
               onChanged={(u) => {
                 setMe(u)
                 loadWorkers()
+              }}
+              onLogout={() => {
+                setMe(null)
+                setTab('map')
+                setNeedsRegister(true)
               }}
             />
           </div>

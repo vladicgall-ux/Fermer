@@ -1,15 +1,17 @@
-import { handle, readJson } from '@/lib/api'
+import { ApiError, handle, readJson } from '@/lib/api'
+import { getLogin } from '@/lib/credentials'
 import { sql } from '@/lib/db'
 import { displayName } from '@/lib/telegram-auth'
 import type { User } from '@/lib/types'
 import { nameSchema } from '@/lib/validation'
 
-export const GET = handle({}, async (_req, { user }) => ({ user }))
+export const GET = handle({}, async (_req, { user }) => ({ user, login: await getLogin(user.id) }))
 
 // Своё имя. { name: null } — вернуть имя из Telegram.
 export const PATCH = handle({ write: true }, async (req, { user, tg }) => {
   const { name } = nameSchema.parse(await readJson(req))
-  const nextName = name ?? displayName(tg)
+  if (name === null && !tg) throw new ApiError(400, 'нет имени из Telegram')
+  const nextName = name ?? displayName(tg!)
   const custom = name !== null
 
   const updated = await sql().begin(async (tx) => {

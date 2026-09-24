@@ -60,6 +60,11 @@ export function getInitData(): string {
   return ''
 }
 
+/** Приложение открыто внутри Telegram (есть подписанный initData). */
+export function inTelegram(): boolean {
+  return getInitData() !== ''
+}
+
 export function confirmDialog(message: string): Promise<boolean> {
   const w = tg()
   if (w && supports('6.2')) return new Promise((resolve) => w.showConfirm(message, resolve))

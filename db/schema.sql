@@ -46,6 +46,25 @@ alter table audit_log drop constraint if exists audit_log_action_check;
 alter table audit_log add constraint audit_log_action_check
   check (action in ('create', 'update', 'delete', 'role', 'rename'));
 
+-- Вход без Telegram: пользователь создаётся по имени, telegram_id пустой.
+alter table users alter column telegram_id drop not null;
+-- kind: telegram — вошёл через бота; web — зарегистрировался в браузере;
+-- manual — рабочий, вписанный админом в отметку (сам в приложение не входит).
+alter table users add column if not exists kind text not null default 'telegram';
+alter table users drop constraint if exists users_kind_check;
+alter table users add constraint users_kind_check check (kind in ('telegram', 'web', 'manual'));
+create unique index if not exists users_manual_name_idx on users (lower(name)) where kind = 'manual';
+
+-- Логин и пароль для входа через браузер. Отдельная таблица, чтобы хэш пароля
+-- никогда не попадал в ответы API вместе с записью пользователя.
+create table if not exists user_credentials (
+  user_id       bigint      primary key references users(id) on delete cascade,
+  login         text        not null,
+  password_hash text        not null,
+  updated_at    timestamptz not null default now()
+);
+create unique index if not exists user_credentials_login_idx on user_credentials (lower(login));
+
 create index if not exists audit_log_entity_idx on audit_log (entity, entity_id, created_at desc);
 create index if not exists audit_log_created_idx on audit_log (created_at desc);
 
@@ -59,6 +78,17 @@ create table if not exists rate_limits (
 
 create index if not exists rate_limits_window_idx on rate_limits (window_start);
 
+-- Сессии браузерного входа: в БД хранится только SHA-256 токена из cookie.
+create table if not exists sessions (
+  token_hash   text        primary key,
+  user_id      bigint      not null references users(id) on delete cascade,
+  created_at   timestamptz not null default now(),
+  last_seen_at timestamptz not null default now(),
+  expires_at   timestamptz not null
+);
+
+create index if not exists sessions_user_idx on sessions (user_id);
+
 -- Supabase публикует схему public через REST API (anon key). Приложение ходит в БД
 -- напрямую под владельцем таблиц, поэтому включаем RLS без политик — это закрывает
 -- доступ через PostgREST. На Neon/Vercel Postgres команды безвредны.
@@ -66,3 +96,5 @@ alter table users       enable row level security;
 alter table marks       enable row level security;
 alter table audit_log   enable row level security;
 alter table rate_limits enable row level security;
+alter table sessions    enable row level security;
+alter table user_credentials enable row level security;

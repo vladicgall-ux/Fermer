@@ -14,7 +14,11 @@
   --accent: var(--tg-theme-accent-text-color, var(--button));
   --radius: 14px;
   --shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
-  --safe-top: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px));
+  /* В Telegram отступы приходят из SDK, в браузере/PWA — из env(safe-area-inset-*) (вырез, «чёлка»). */
+  --safe-top: max(
+    calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px)),
+    env(safe-area-inset-top, 0px)
+  );
   --safe-bottom: max(var(--tg-safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px));
   color-scheme: light;
 }
@@ -110,6 +114,7 @@ h2 {
 .app {
   display: flex;
   flex-direction: column;
+  height: 100vh;
   height: var(--tg-viewport-stable-height, 100dvh);
   min-height: 0;
 }
@@ -241,6 +246,8 @@ h2 {
 
 input,
 select {
+  /* 16px: иначе iOS Safari увеличивает страницу при фокусе на поле. */
+  font-size: 16px;
   border: 1px solid var(--separator);
   border-radius: 10px;
   background: var(--secondary-bg);
@@ -848,4 +855,97 @@ select:focus {
 
 .audit.compact li {
   padding: 8px 10px;
+}
+
+/* ---------- Вход без Telegram ---------- */
+
+.register {
+  width: 100%;
+  max-width: 360px;
+  margin: 16px 0;
+  text-align: left;
+}
+
+.error-text {
+  color: var(--danger);
+  font-size: 14px;
+}
+
+/* ---------- Мобильные устройства ---------- */
+
+/* Без задержки и двойного тапа-зума на кнопках (Android/iOS). */
+button,
+a,
+label,
+select,
+summary {
+  touch-action: manipulation;
+}
+
+/* Навигация и кнопки не выделяются долгим нажатием. */
+button,
+.bottom-nav,
+.chips,
+.segmented {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.nav-btn {
+  min-height: 52px;
+}
+
+.btn,
+.icon-btn,
+.chip,
+.stepper button {
+  min-height: 44px;
+}
+
+.chip {
+  min-height: 34px;
+}
+
+.custom-worker {
+  margin-top: 8px;
+}
+
+.auth {
+  justify-content: flex-start;
+  padding-top: calc(40px + var(--safe-top));
+  padding-bottom: calc(24px + var(--safe-bottom));
+  overflow-y: auto;
+}
+
+.auth h1 {
+  margin: 4px 0 0;
+}
+
+.auth-tabs {
+  width: 100%;
+  max-width: 360px;
+  margin: 20px 0 0;
+}
+
+.logout-btn {
+  margin-top: 24px;
+}
+
+@media (min-width: 720px) {
+  /* Планшет / компьютер: карточка не растягивается на всю ширину. */
+  .sheet {
+    left: 50%;
+    right: auto;
+    width: 480px;
+    transform: translateX(-50%);
+    border-radius: 18px 18px 0 0;
+  }
+
+  @keyframes slide-up {
+    from {
+      transform: translate(-50%, 30px);
+      opacity: 0;
+    }
+  }
 }

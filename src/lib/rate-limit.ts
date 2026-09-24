@@ -8,6 +8,8 @@ export const LIMITS = {
   ip: 300, // все запросы с одного IP, включая неавторизованные
   user: 120, // все запросы одного пользователя
   userWrite: 30, // изменяющие запросы одного пользователя
+  register: 3, // регистраций без Telegram с одного IP
+  login: 10, // попыток входа по паролю с одного IP и на один логин
 } as const
 
 export interface RateLimitKey {

@@ -93,9 +93,11 @@ export default function UsersTab({ me, onChanged }: { me: User; onChanged: (u: U
                     </div>
                     <div className="hint">
                       {u.username ? `@${u.username} · ` : ''}
+                      {u.kind === 'web' ? 'браузер · ' : u.kind === 'manual' ? 'вписан вручную · ' : ''}
                       {u.role === 'admin' ? 'Админ' : 'Рабочий'} · {bales(u.bales)}
                     </div>
                   </div>
+                  {u.kind !== 'manual' && (
                   <label className={`switch${u.locked ? ' disabled' : ''}`} title={u.locked ? 'Задан в ADMIN_TELEGRAM_IDS' : ''}>
                     <input
                       type="checkbox"
@@ -106,6 +108,7 @@ export default function UsersTab({ me, onChanged }: { me: User; onChanged: (u: U
                     <span className="slider" />
                     <span className="switch-label">Админ</span>
                   </label>
+                  )}
                 </li>
               ))}
             </ul>

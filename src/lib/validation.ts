@@ -6,14 +6,29 @@ const lng = z.number().min(-180).max(180)
 const bales = z.number().int().min(1).max(100000)
 const id = z.number().int().positive().max(Number.MAX_SAFE_INTEGER)
 
+const personName = z
+  .string()
+  .max(200)
+  .transform((v) => cleanName(v))
+  .pipe(
+    z
+      .string()
+      .min(2, 'Имя слишком короткое')
+      .max(64, 'Имя слишком длинное')
+      .refine((v) => !/[\p{Cc}<>]/u.test(v), 'Недопустимые символы'),
+  )
+
 export const createMarkSchema = z
   .object({
     lat,
     lng,
     bales_count: bales,
     worker_id: id.optional(),
+    // Админ: имя рабочего, которого нет в приложении (создаётся «ручной» рабочий).
+    worker_name: personName.optional(),
   })
   .strict()
+  .refine((v) => !(v.worker_id && v.worker_name), 'worker_id and worker_name are exclusive')
 
 export const updateMarkSchema = z
   .object({
@@ -21,6 +36,7 @@ export const updateMarkSchema = z
     lng: lng.optional(),
     bales_count: bales.optional(),
     worker_id: id.optional(),
+    worker_name: personName.optional(),
     date: z.iso
       .datetime({ offset: true })
       .refine((s) => {
@@ -32,22 +48,36 @@ export const updateMarkSchema = z
   .strict()
   .refine((v) => Object.keys(v).length > 0, 'nothing to update')
   .refine((v) => (v.lat === undefined) === (v.lng === undefined), 'lat and lng must be set together')
+  .refine((v) => !(v.worker_id && v.worker_name), 'worker_id and worker_name are exclusive')
 
 // null — вернуть имя из Telegram.
-export const nameSchema = z
+export const nameSchema = z.object({ name: personName.nullable() }).strict()
+
+export const loginField = z
+  .string()
+  .trim()
+  .min(3, 'Логин: минимум 3 символа')
+  .max(32, 'Логин: максимум 32 символа')
+  .regex(/^[\p{L}\p{N}_.-]+$/u, 'Логин: только буквы, цифры и _ . -')
+
+export const passwordField = z
+  .string()
+  .min(6, 'Пароль: минимум 6 символов')
+  .max(128, 'Пароль слишком длинный')
+
+export const registerSchema = z
+  .object({ name: personName, login: loginField, password: passwordField })
+  .strict()
+
+export const loginSchema = z
+  .object({ login: z.string().trim().min(1).max(32), password: z.string().min(1).max(128) })
+  .strict()
+
+export const credentialsSchema = z
   .object({
-    name: z
-      .string()
-      .max(200)
-      .transform((v) => cleanName(v))
-      .pipe(
-        z
-          .string()
-          .min(2, 'Имя слишком короткое')
-          .max(64, 'Имя слишком длинное')
-          .refine((v) => !/[\p{Cc}<>]/u.test(v), 'Недопустимые символы'),
-      )
-      .nullable(),
+    login: loginField,
+    password: passwordField,
+    current_password: z.string().max(128).optional(),
   })
   .strict()
 

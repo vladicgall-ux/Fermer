@@ -3,21 +3,40 @@
 import { useEffect, useRef, useState } from 'react'
 import { supports, tg } from './telegram'
 
-/** Показывает системную кнопку «Назад» Telegram, пока active = true. */
+/**
+ * «Назад» закрывает открытую карточку:
+ * в Telegram — системная кнопка BackButton, в браузере/PWA — кнопка «Назад» Android
+ * и жест назад iOS (через запись в истории браузера).
+ */
 export function useBackButton(active: boolean, onBack: () => void) {
   const cb = useRef(onBack)
   useEffect(() => {
     cb.current = onBack
   })
   useEffect(() => {
+    if (!active) return
     const w = tg()
-    if (!active || !w || !supports('6.1')) return
-    const handler = () => cb.current()
-    w.BackButton.onClick(handler)
-    w.BackButton.show()
+    if (w && supports('6.1')) {
+      const handler = () => cb.current()
+      w.BackButton.onClick(handler)
+      w.BackButton.show()
+      return () => {
+        w.BackButton.offClick(handler)
+        w.BackButton.hide()
+      }
+    }
+    // Браузер: добавляем запись в историю; «Назад» снимает её и закрывает карточку.
+    let poppedByUser = false
+    history.pushState({ fermerSheet: true }, '')
+    const onPop = () => {
+      poppedByUser = true
+      cb.current()
+    }
+    window.addEventListener('popstate', onPop)
     return () => {
-      w.BackButton.offClick(handler)
-      w.BackButton.hide()
+      window.removeEventListener('popstate', onPop)
+      // Карточку закрыли кнопкой в интерфейсе — убираем свою запись из истории.
+      if (!poppedByUser && history.state?.fermerSheet) history.back()
     }
   }, [active])
 }

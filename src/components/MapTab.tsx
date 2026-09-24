@@ -45,7 +45,15 @@ function periodStart(p: Period): number {
   return 0
 }
 
-export default function MapTab({ me, workers, active }: { me: User; workers: User[]; active: boolean }) {
+interface Props {
+  me: User
+  workers: User[]
+  active: boolean
+  /** Список рабочих изменился (админ вписал нового рабочего вручную). */
+  onWorkersChanged?: () => void
+}
+
+export default function MapTab({ me, workers, active, onWorkersChanged }: Props) {
   const isAdmin = me.role === 'admin'
   const geo = useGeolocation()
   const [marks, setMarks] = useState<Mark[]>([])
@@ -146,7 +154,7 @@ export default function MapTab({ me, workers, active }: { me: User; workers: Use
             lat: pick[0],
             lng: pick[1],
             bales_count: v.bales_count,
-            ...(isAdmin ? { worker_id: v.worker_id } : {}),
+            ...(isAdmin ? (v.worker_name ? { worker_name: v.worker_name } : { worker_id: v.worker_id }) : {}),
           },
         })
         setMarks((ms) => [r.mark, ...ms])
@@ -157,7 +165,8 @@ export default function MapTab({ me, workers, active }: { me: User; workers: Use
         const orig = mode.mark
         const body: Record<string, unknown> = {}
         if (v.bales_count !== orig.bales_count) body.bales_count = v.bales_count
-        if (v.worker_id !== orig.worker_id) body.worker_id = v.worker_id
+        if (v.worker_name) body.worker_name = v.worker_name
+        else if (v.worker_id !== orig.worker_id) body.worker_id = v.worker_id
         if (pick[0] !== orig.lat || pick[1] !== orig.lng) {
           body.lat = pick[0]
           body.lng = pick[1]
@@ -172,6 +181,7 @@ export default function MapTab({ me, workers, active }: { me: User; workers: Use
         setSelectedId(orig.id)
       }
       haptic('success')
+      if (v.worker_name) onWorkersChanged?.()
     } catch (e) {
       haptic('error')
       await alertDialog((e as Error).message)

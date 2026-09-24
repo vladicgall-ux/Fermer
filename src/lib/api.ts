@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { ZodError } from 'zod'
 import { sql } from './db'
 import { hitRateLimit, LIMITS, type RateLimitKey } from './rate-limit'
+import { hashToken, SESSION_COOKIE, sessionUser } from './session'
 import { displayName, validateInitData, type TelegramUser } from './telegram-auth'
 import type { User } from './types'
 
@@ -18,8 +19,8 @@ export class ApiError extends Error {
 export interface Ctx {
   user: User
   isAdmin: boolean
-  /** Данные из проверенного initData. */
-  tg: TelegramUser
+  /** Данные из проверенного initData; null — вход из браузера по сессии. */
+  tg: TelegramUser | null
 }
 
 interface HandleOpts {
@@ -55,8 +56,8 @@ function bootstrapAdminIds(): Set<number> {
   )
 }
 
-export function isBootstrapAdmin(telegramId: number): boolean {
-  return bootstrapAdminIds().has(telegramId)
+export function isBootstrapAdmin(telegramId: number | null): boolean {
+  return telegramId !== null && bootstrapAdminIds().has(telegramId)
 }
 
 async function upsertUser(tg: TelegramUser): Promise<User> {
@@ -96,7 +97,8 @@ async function upsertUser(tg: TelegramUser): Promise<User> {
 
 /**
  * Обёртка для всех API-обработчиков:
- * проверка initData (fail-closed) → rate limit → пользователь из БД → проверка роли.
+ * аутентификация (Telegram initData или cookie-сессия, fail-closed) → rate limit →
+ * пользователь из БД → проверка роли.
  */
 export function handle<P = Record<string, never>>(
   opts: HandleOpts,
@@ -110,27 +112,43 @@ export function handle<P = Record<string, never>>(
         return json({ error: 'server misconfigured' }, 503)
       }
 
+      // Внутри Telegram клиент присылает initData; в обычном браузере — cookie сессии.
       const auth = req.headers.get('authorization') ?? ''
       const initData = auth.startsWith('tma ') ? auth.slice(4) : ''
-      const result = validateInitData(initData, botToken, { maxAgeSec: maxAgeSec() })
+      const tgResult = initData ? validateInitData(initData, botToken, { maxAgeSec: maxAgeSec() }) : null
+      const sessionToken = tgResult ? '' : (req.cookies.get(SESSION_COOKIE)?.value ?? '')
 
+      // Лимит по пользователю считается до обращения к БД: по id Telegram или по хэшу токена сессии.
+      const subject = tgResult?.ok
+        ? `u:${tgResult.user.id}`
+        : sessionToken
+          ? `s:${hashToken(sessionToken).slice(0, 32)}`
+          : null
       const keys: RateLimitKey[] = [{ key: `ip:${clientIp(req)}`, limit: LIMITS.ip }]
-      if (result.ok) {
-        keys.push({ key: `u:${result.user.id}`, limit: LIMITS.user })
-        if (opts.write) keys.push({ key: `uw:${result.user.id}`, limit: LIMITS.userWrite })
+      if (subject) {
+        keys.push({ key: subject, limit: LIMITS.user })
+        if (opts.write) keys.push({ key: `w${subject}`, limit: LIMITS.userWrite })
       }
       const retryAfter = await hitRateLimit(keys)
       if (retryAfter !== null) {
         return json({ error: 'too many requests' }, 429, { 'Retry-After': String(retryAfter) })
       }
 
-      if (!result.ok) return json({ error: 'unauthorized' }, 401)
+      let user: User | null = null
+      let tg: TelegramUser | null = null
+      if (tgResult) {
+        if (!tgResult.ok) return json({ error: 'unauthorized' }, 401)
+        tg = tgResult.user
+        user = await upsertUser(tg)
+      } else if (sessionToken) {
+        user = await sessionUser(sessionToken)
+      }
+      if (!user) return json({ error: 'unauthorized' }, 401)
 
-      const user = await upsertUser(result.user)
       const isAdmin = user.role === 'admin'
       if (opts.admin && !isAdmin) return json({ error: 'forbidden' }, 403)
 
-      const out = await fn(req, { user, isAdmin, tg: result.user }, await route.params)
+      const out = await fn(req, { user, isAdmin, tg }, await route.params)
       return out instanceof Response ? out : json(out)
     } catch (e) {
       if (e instanceof ApiError) return json({ error: e.message }, e.status)

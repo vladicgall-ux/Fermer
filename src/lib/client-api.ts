@@ -18,18 +18,22 @@ const MESSAGES: Record<number, string> = {
 }
 
 export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+  const initData = getInitData()
   const res = await fetch(path, {
     method: init.method ?? 'GET',
+    // В Telegram — initData в заголовке; в обычном браузере — cookie сессии (same-origin).
     headers: {
-      Authorization: `tma ${getInitData()}`,
+      ...(initData ? { Authorization: `tma ${initData}` } : {}),
       ...(init.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
     },
+    credentials: 'same-origin',
     body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
     cache: 'no-store',
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
-    const msg = typeof data?.error === 'string' && res.status === 409 ? data.error : MESSAGES[res.status]
+    const custom = res.status === 409 || (res.status === 400 && /[а-яё]/i.test(String(data?.error ?? '')))
+    const msg = typeof data?.error === 'string' && custom ? data.error : MESSAGES[res.status]
     throw new HttpError(res.status, msg ?? `Ошибка сервера (${res.status})`)
   }
   return data as T

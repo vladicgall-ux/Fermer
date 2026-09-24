@@ -1,6 +1,6 @@
 import { ApiError, handle, readJson } from '@/lib/api'
 import { sql } from '@/lib/db'
-import { assertUserExists, getMark, markSelect, snapshot } from '@/lib/marks'
+import { assertUserExists, getMark, manualWorkerId, markSelect, snapshot } from '@/lib/marks'
 import type { Mark } from '@/lib/types'
 import { createMarkSchema } from '@/lib/validation'
 
@@ -21,12 +21,12 @@ export const GET = handle({}, async (_req, { user, isAdmin }) => {
 // Дата ставится сервером автоматически (default now()), клиент её не передаёт.
 export const POST = handle({ write: true }, async (req, { user, isAdmin }) => {
   const body = createMarkSchema.parse(await readJson(req))
-  const workerId = body.worker_id ?? user.id
-  if (workerId !== user.id && !isAdmin) {
+  if (!isAdmin && ((body.worker_id && body.worker_id !== user.id) || body.worker_name)) {
     throw new ApiError(403, 'workers can only create marks for themselves')
   }
 
   const mark = await sql().begin(async (tx) => {
+    const workerId = body.worker_name ? await manualWorkerId(tx, body.worker_name) : (body.worker_id ?? user.id)
     if (workerId !== user.id) await assertUserExists(tx, workerId)
     const [row] = await tx<{ id: number }[]>`
       insert into marks (worker_id, created_by_id, lat, lng, bales_count)
