@@ -30,6 +30,14 @@ function computeRange(mode: Mode, anchor: Date, custom: { from: string; to: stri
   }
 }
 
+/** Годы для выбора: 10 лет назад и 10 вперёд от текущего (плюс выбранный, если он дальше). */
+function yearOptions(selected: number): number[] {
+  const now = new Date().getFullYear()
+  const from = Math.min(now - 10, selected)
+  const to = Math.max(now + 10, selected)
+  return Array.from({ length: to - from + 1 }, (_, i) => to - i)
+}
+
 function shift(mode: Mode, anchor: Date, dir: -1 | 1): Date {
   const d = new Date(anchor)
   if (mode === 'day') d.setDate(d.getDate() + dir)
@@ -132,7 +140,6 @@ export default function StatsTab({ me, workers }: { me: User; workers: User[] })
           <input
             type="date"
             value={toYmd(anchor)}
-            max={today}
             onChange={(e) => e.target.value && setAnchor(parseYmd(e.target.value))}
           />
         )}
@@ -140,7 +147,6 @@ export default function StatsTab({ me, workers }: { me: User; workers: User[] })
           <input
             type="month"
             value={toYmd(anchor).slice(0, 7)}
-            max={today.slice(0, 7)}
             onChange={(e) => e.target.value && setAnchor(parseYmd(`${e.target.value}-01`))}
           />
         )}
@@ -149,7 +155,7 @@ export default function StatsTab({ me, workers }: { me: User; workers: User[] })
             value={anchor.getFullYear()}
             onChange={(e) => setAnchor(new Date(Number(e.target.value), 0, 1))}
           >
-            {Array.from({ length: 11 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+            {yearOptions(anchor.getFullYear()).map((y) => (
               <option key={y} value={y}>
                 {y}
               </option>
