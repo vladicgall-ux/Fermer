@@ -2,7 +2,7 @@
 
 import L from 'leaflet'
 import { useEffect, useRef } from 'react'
-import { workerColor } from '@/lib/format'
+import { textOn } from '@/lib/palettes'
 import type { Mark } from '@/lib/types'
 
 export interface FlyTo {
@@ -24,7 +24,8 @@ interface Props {
   selectedId: number | null
   flyTo: FlyTo | null
   active: boolean
-  colorByWorker: boolean
+  /** Цвет метки рабочего (своя палитра, у каждого рабочего свой цвет). */
+  colorFor: (workerId: number) => string
   /** Сюда пишется текущий центр карты (для новой отметки без геопозиции). */
   centerRef: React.RefObject<[number, number] | null>
   baseLayer: BaseLayer
@@ -34,11 +35,10 @@ export type BaseLayer = 'satellite' | 'scheme'
 
 const DEFAULT_CENTER: [number, number] = [55.75, 37.62]
 
-function markIcon(m: Mark, selected: boolean, colorByWorker: boolean) {
-  const color = colorByWorker ? workerColor(m.worker_id) : 'var(--accent)'
+function markIcon(m: Mark, selected: boolean, color: string) {
   return L.divIcon({
     className: '',
-    html: `<div class="pin${selected ? ' selected' : ''}" style="--pin:${color}"><span>${m.bales_count}</span></div>`,
+    html: `<div class="pin${selected ? ' selected' : ''}" style="--pin:${color};--pin-text:${textOn(color)}"><span>${m.bales_count}</span></div>`,
     iconSize: [36, 44],
     iconAnchor: [18, 44],
   })
@@ -128,7 +128,7 @@ export default function MapView(props: Props) {
   }, [baseLayer])
 
   // Маркеры отметок.
-  const { marks, selectedId, colorByWorker } = props
+  const { marks, selectedId, colorFor } = props
   useEffect(() => {
     const layer = marksLayer.current
     const m = map.current
@@ -137,7 +137,7 @@ export default function MapView(props: Props) {
     for (const mark of marks) {
       const selected = mark.id === selectedId
       L.marker([mark.lat, mark.lng], {
-        icon: markIcon(mark, selected, colorByWorker),
+        icon: markIcon(mark, selected, colorFor(mark.worker_id)),
         zIndexOffset: selected ? 1000 : 0,
         keyboard: false,
       })
@@ -151,7 +151,7 @@ export default function MapView(props: Props) {
       m.fitBounds(L.latLngBounds(marks.map((x) => [x.lat, x.lng])), { padding: [40, 40], maxZoom: 15 })
       centered.current = 'marks'
     }
-  }, [marks, selectedId, colorByWorker])
+  }, [marks, selectedId, colorFor])
 
   // Текущая геопозиция: центр карты при первом получении.
   const { me, accuracy } = props

@@ -106,7 +106,7 @@ export default function App() {
           <MapTab
             key={me.role}
             me={me}
-            workers={isAdmin ? workers : []}
+            workers={workers}
             active={current === 'map'}
             onWorkersChanged={loadWorkers}
           />

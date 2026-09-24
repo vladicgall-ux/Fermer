@@ -563,7 +563,7 @@ select:focus {
   right: 0;
   top: 10px;
   text-align: center;
-  color: #fff;
+  color: var(--pin-text, #fff);
   font-size: 11px;
   font-weight: 700;
   line-height: 1;
@@ -990,4 +990,75 @@ button,
 
 .date-picker-pop .segmented {
   margin-bottom: 8px;
+}
+
+/* Легенда цветов рабочих на карте. */
+.legend {
+  max-width: 260px;
+  max-height: 40vh;
+  overflow-y: auto;
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  font-size: 13px;
+}
+
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.legend-row.clickable {
+  cursor: pointer;
+}
+
+.legend-row.active {
+  font-weight: 700;
+}
+
+.dot {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+/* Выбор палитры в профиле. */
+.palette-list {
+  display: grid;
+  gap: 8px;
+}
+
+.palette-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  background: var(--secondary-bg);
+}
+
+.palette-option.active {
+  border-color: var(--button);
+}
+
+.palette-swatches {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.palette-swatches span {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
 }

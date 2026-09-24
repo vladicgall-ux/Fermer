@@ -42,12 +42,6 @@ export function plural(n: number, forms: [string, string, string]): string {
 
 export const bales = (n: number) => `${fmtNum(n)} ${plural(n, ['рулон', 'рулона', 'рулонов'])}`
 
-/** Устойчивый цвет рабочего для маркеров. */
-export function workerColor(id: number): string {
-  const hue = (id * 137.508) % 360
-  return `hsl(${hue.toFixed(0)} 65% 42%)`
-}
-
 export function localTimeZone(): string {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'

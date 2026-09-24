@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '@/lib/client-api'
 import { bales, fmtNum, plural } from '@/lib/format'
 import { useBackButton, useGeolocation } from '@/lib/hooks'
+import { makeColorFor, usePalette } from '@/lib/palettes'
 import { alertDialog, confirmDialog, haptic } from '@/lib/telegram'
 import type { Mark, User } from '@/lib/types'
 import MarkCard from './MarkCard'
@@ -96,6 +97,8 @@ export default function MapTab({ me, workers, active, onWorkersChanged }: Props)
   const [customKind, setCustomKind] = useState<CustomKind>('year')
   const [customValue, setCustomValue] = useState(() => String(new Date().getFullYear()))
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [legendOpen, setLegendOpen] = useState(false)
+  const palette = usePalette()
   const [workerFilter, setWorkerFilter] = useState<number | 0>(0)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [mode, setMode] = useState<Mode>({ kind: 'view' })
@@ -163,6 +166,23 @@ export default function MapTab({ me, workers, active, onWorkersChanged }: Props)
     () => (editingId === null ? visible : visible.filter((m) => m.id !== editingId)),
     [visible, editingId],
   )
+
+  // Цвет у каждого рабочего свой; порядок — по id всех известных рабочих.
+  const colorFor = useMemo(() => {
+    const ids = new Set<number>([me.id, ...workers.map((w) => w.id), ...marks.map((m) => m.worker_id)])
+    return makeColorFor(palette, [...ids])
+  }, [palette, workers, marks, me.id])
+
+  // Легенда: рабочие, у которых есть отметки.
+  const legend = useMemo(() => {
+    const byId = new Map<number, { id: number; name: string; count: number }>()
+    for (const m of marks) {
+      const e = byId.get(m.worker_id) ?? { id: m.worker_id, name: m.worker_name, count: 0 }
+      e.count++
+      byId.set(m.worker_id, e)
+    }
+    return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+  }, [marks])
 
   const totalBales = useMemo(() => visible.reduce((s, m) => s + m.bales_count, 0), [visible])
   const selected = marks.find((m) => m.id === selectedId) ?? null
@@ -275,7 +295,7 @@ export default function MapTab({ me, workers, active, onWorkersChanged }: Props)
         selectedId={selectedId}
         flyTo={flyTo}
         active={active}
-        colorByWorker={isAdmin}
+        colorFor={colorFor}
         centerRef={centerRef}
         baseLayer={baseLayer}
       />
@@ -364,10 +384,31 @@ export default function MapTab({ me, workers, active, onWorkersChanged }: Props)
               ))}
             </select>
           )}
+          {isAdmin && legend.length > 0 && (
+            <button className={`chip-select${legendOpen ? ' active' : ''}`} onClick={() => setLegendOpen((o) => !o)}>
+              🎨 Цвета
+            </button>
+          )}
           <div className="summary-pill">
             {fmtNum(visible.length)} {plural(visible.length, ['отметка', 'отметки', 'отметок'])} ·{' '}
             {bales(totalBales)}
           </div>
+          {isAdmin && legendOpen && (
+            <div className="legend">
+              {legend.map((w) => (
+                <div
+                  key={w.id}
+                  className={`legend-row clickable${workerFilter === w.id ? ' active' : ''}`}
+                  onClick={() => setWorkerFilter(workerFilter === w.id ? 0 : w.id)}
+                >
+                  <span className="dot" style={{ background: colorFor(w.id) }} />
+                  <span className="grow">{w.name}</span>
+                  <span className="hint">{w.count}</span>
+                </div>
+              ))}
+              <p className="hint">Нажмите на рабочего, чтобы показать только его метки. Палитра — в «Профиле».</p>
+            </div>
+          )}
           {loadError && <div className="error-pill">{loadError}</div>}
           {geo.error && <div className="error-pill">{geo.error}</div>}
         </div>
