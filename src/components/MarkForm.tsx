@@ -45,7 +45,9 @@ export default function MarkForm(props: Props) {
   const custom = workerId === OTHER
   const valid = Number.isInteger(n) && n >= 1 && n <= 100000 && (!custom || customWorker.trim().length >= 2)
 
-  const options = workers.some((w) => w.id === me.id) ? workers : [me, ...workers]
+  const all = workers.some((w) => w.id === me.id) ? workers : [me, ...workers]
+  const appUsers = all.filter((w) => w.kind !== 'manual')
+  const manual = all.filter((w) => w.kind === 'manual')
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -87,12 +89,23 @@ export default function MarkForm(props: Props) {
         {isAdmin ? (
           <>
             <select id="worker" value={workerId} onChange={(e) => setWorkerId(Number(e.target.value))}>
-              {options.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.name}
-                  {w.id === me.id ? ' (я)' : ''}
-                </option>
-              ))}
+              <optgroup label="В приложении">
+                {appUsers.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                    {w.id === me.id ? ' (я)' : ''}
+                  </option>
+                ))}
+              </optgroup>
+              {manual.length > 0 && (
+                <optgroup label="Добавленные вручную">
+                  {manual.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
               <option value={OTHER}>✎ Другой рабочий (вписать имя)…</option>
             </select>
             {custom && (
@@ -105,6 +118,9 @@ export default function MarkForm(props: Props) {
                 placeholder="Имя рабочего, например «Коля с трактора»"
                 onChange={(e) => setCustomWorker(e.target.value)}
               />
+            )}
+            {custom && (
+              <p className="hint">Рабочий сохранится в списке — в следующий раз просто выберите его.</p>
             )}
           </>
         ) : (

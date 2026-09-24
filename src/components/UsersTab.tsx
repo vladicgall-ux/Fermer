@@ -15,6 +15,27 @@ export default function UsersTab({ me, onChanged }: { me: User; onChanged: (u: U
   const [audit, setAudit] = useState<AuditEntry[] | null>(null)
   const [pending, setPending] = useState<number | null>(null)
   const [query, setQuery] = useState('')
+  const [newWorker, setNewWorker] = useState('')
+  const [adding, setAdding] = useState(false)
+
+  const addWorker = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const name = newWorker.trim()
+    if (name.length < 2 || adding) return
+    setAdding(true)
+    try {
+      const r = await api<{ user: User }>('/api/users', { method: 'POST', body: { name } })
+      setNewWorker('')
+      loadUsers()
+      onChanged(r.user)
+      haptic('success')
+    } catch (err) {
+      haptic('error')
+      await alertDialog((err as Error).message)
+    } finally {
+      setAdding(false)
+    }
+  }
 
   const loadUsers = useCallback(() => {
     api<{ users: Row[] }>('/api/users')
@@ -73,6 +94,18 @@ export default function UsersTab({ me, onChanged }: { me: User; onChanged: (u: U
 
       {view === 'users' && (
         <>
+          <form className="add-worker" onSubmit={addWorker}>
+            <input
+              type="text"
+              value={newWorker}
+              maxLength={64}
+              placeholder="Имя нового рабочего"
+              onChange={(e) => setNewWorker(e.target.value)}
+            />
+            <button type="submit" className="btn primary" disabled={newWorker.trim().length < 2 || adding}>
+              Добавить
+            </button>
+          </form>
           <input
             className="full"
             type="search"

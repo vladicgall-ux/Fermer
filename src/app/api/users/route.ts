@@ -1,6 +1,10 @@
-import { handle, isBootstrapAdmin } from '@/lib/api'
+import { handle, isBootstrapAdmin, readJson } from '@/lib/api'
 import { sql } from '@/lib/db'
+import { manualWorkerId } from '@/lib/marks'
 import type { User } from '@/lib/types'
+import { registerSchema } from '@/lib/validation'
+
+const addWorkerSchema = registerSchema.pick({ name: true }).strict()
 
 export const GET = handle({ admin: true }, async () => {
   const users = await sql()<(User & { bales: number; marks: number })[]>`
@@ -14,4 +18,12 @@ export const GET = handle({ admin: true }, async () => {
   return {
     users: users.map((u) => ({ ...u, locked: isBootstrapAdmin(u.telegram_id) })),
   }
+})
+
+// Админ добавляет рабочего, которого нет в приложении («вписан вручную»), — чтобы выбирать его из списка.
+export const POST = handle({ admin: true, write: true }, async (req) => {
+  const { name } = addWorkerSchema.parse(await readJson(req))
+  const id = await manualWorkerId(sql(), name)
+  const [user] = await sql()<User[]>`select * from users where id = ${id}`
+  return { user }
 })

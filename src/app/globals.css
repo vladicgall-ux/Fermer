@@ -949,3 +949,18 @@ button,
     }
   }
 }
+
+.add-worker {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.add-worker input {
+  flex: 1;
+  min-width: 0;
+}
+
+.add-worker .btn {
+  flex: none;
+}
