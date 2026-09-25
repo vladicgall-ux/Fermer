@@ -68,20 +68,21 @@ export default function MapView(props: Props) {
   useEffect(() => {
     if (!el.current || map.current) return
     const m = L.map(el.current, { zoomControl: false, attributionControl: true }).setView(DEFAULT_CENTER, 5)
-    const scheme = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    const scheme = L.tileLayer('/tiles/osm/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap',
     })
     // Спутник Esri World Imagery (без ключа) + подписи населённых пунктов и границ поверх снимка.
     // maxNativeZoom 18: на больших зумах тайлы растягиваются вместо заглушки «нет данных».
-    const esri = 'https://server.arcgisonline.com/ArcGIS/rest/services'
+    // Тайлы идут через наш сервер (rewrites в next.config.ts): телефону не нужен доступ к зарубежным CDN.
+    const esri = '/tiles/esri'
     const satellite = L.layerGroup([
-      L.tileLayer(`${esri}/World_Imagery/MapServer/tile/{z}/{y}/{x}`, {
+      L.tileLayer(`${esri}/imagery/{z}/{y}/{x}`, {
         maxZoom: 19,
         maxNativeZoom: 18,
         attribution: '&copy; Esri',
       }),
-      L.tileLayer(`${esri}/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}`, {
+      L.tileLayer(`${esri}/labels/{z}/{y}/{x}`, {
         maxZoom: 19,
         maxNativeZoom: 18,
       }),

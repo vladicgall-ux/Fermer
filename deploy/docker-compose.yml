@@ -1,0 +1,45 @@
+# Fermer на своём сервере: приложение + Caddy (HTTPS-сертификат Let's Encrypt выпускается сам).
+services:
+  app:
+    build: ..
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      APP_URL: https://${DOMAIN}
+    expose:
+      - '3000'
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  # Своя база на сервере (если Supabase недоступен): docker compose --profile localdb up -d
+  # и в .env: DATABASE_URL=postgres://fermer:<DB_PASSWORD>@db:5432/fermer
+  db:
+    image: postgres:16-alpine
+    profiles: ['localdb']
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: fermer
+      POSTGRES_USER: fermer
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change-me}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../db/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+
+volumes:
+  caddy_data:
+  caddy_config:
+  pgdata:

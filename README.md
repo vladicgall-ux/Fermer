@@ -140,3 +140,22 @@ src/components/…              App (навигация), MapTab/MapView (Leafle
 - Тайлы OpenStreetMap и геокодер Nominatim бесплатны, но имеют политику честного использования; при большой
   нагрузке замените URL тайлов в `src/components/MapView.tsx` (и `img-src` в CSP) на свой провайдер.
 - Отметку можно поставить только за пользователя, который хотя бы раз открыл приложение.
+
+## Свой сервер в России (без VPN)
+
+`*.vercel.app` в России часто открывается только через VPN. Для работы без VPN приложение
+можно запустить на своём сервере (Timeweb Cloud, Selectel, Beget и т. п.): Ubuntu 22/24, от 1 ГБ RAM.
+
+1. Купите домен и направьте его A-запись на IP сервера.
+2. На сервере от root:
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/vladicgall-ux/Fermer/main/deploy/setup.sh -o setup.sh
+   bash setup.sh            # поставит Docker, скачает код и попросит заполнить /opt/fermer/deploy/.env
+   nano /opt/fermer/deploy/.env
+   bash setup.sh            # соберёт и запустит; HTTPS-сертификат выпустится автоматически
+   ```
+3. В @BotFather поменяйте URL Mini App на `https://<ваш домен>`.
+
+Обновление — повторный `bash /opt/fermer/deploy/setup.sh`. Телефону нужен доступ только к вашему домену:
+SDK Telegram раздаётся с него же (`public/telegram-web-app.js`), тайлы карт и геокодер проксируются
+(`rewrites` в `next.config.ts`).

@@ -15,7 +15,7 @@ function useAddress(lat: number, lng: number): string | null {
   useEffect(() => {
     if (addressCache.has(key)) return
     const ctrl = new AbortController()
-    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=16&accept-language=ru&lat=${lat}&lon=${lng}`
+    const url = `/geo/reverse?format=jsonv2&zoom=16&accept-language=ru&lat=${lat}&lon=${lng}`
     fetch(url, { signal: ctrl.signal })
       .then((r) => (r.ok ? r.json() : null))
       .then((d: { display_name?: string } | null) => {
