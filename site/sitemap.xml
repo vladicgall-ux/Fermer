@@ -2,13 +2,13 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
-    <loc>https://vladicgall-ux.github.io/Fermer/</loc>
+    <loc>https://fermeryelgi.ru/</loc>
     <lastmod>2026-10-05</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
-    <image:image><image:loc>https://vladicgall-ux.github.io/Fermer/img/logo.jpg</image:loc></image:image>
-    <image:image><image:loc>https://vladicgall-ux.github.io/Fermer/img/house.jpg</image:loc></image:image>
-    <image:image><image:loc>https://vladicgall-ux.github.io/Fermer/img/tent.jpg</image:loc></image:image>
-    <image:image><image:loc>https://vladicgall-ux.github.io/Fermer/img/snowmobile.jpg</image:loc></image:image>
+    <image:image><image:loc>https://fermeryelgi.ru/img/logo.jpg</image:loc></image:image>
+    <image:image><image:loc>https://fermeryelgi.ru/img/house.jpg</image:loc></image:image>
+    <image:image><image:loc>https://fermeryelgi.ru/img/tent.jpg</image:loc></image:image>
+    <image:image><image:loc>https://fermeryelgi.ru/img/snowmobile.jpg</image:loc></image:image>
   </url>
 </urlset>
